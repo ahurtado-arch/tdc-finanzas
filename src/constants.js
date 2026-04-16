@@ -1,5 +1,5 @@
 export const PROYECTOS     = ["LC","A3","LM2","LM3","AQ","PC","GENERAL"];
-export const TIPOS_GASTO_CC = ["Cerco / Lovemark","Entrega / Movilidad","Impresiones Cerco","Impresiones Obra","Impresiones Oficina","Software / Digital","Otros"];
+export const TIPOS_GASTO_CC = ["Cerco","Lovemark","Entrega","Movilidad","Impresiones Cerco","Impresiones Obra","Impresiones Oficina","Software / Digital","Otros"];
 export const TIPOS_DOC     = ["Factura","Boleta","Ticket","RPH","Otro"];
 export const MESES         = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
