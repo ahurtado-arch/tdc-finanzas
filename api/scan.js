@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { base64, mediaType, tipo } = req.body;
+  console.log("API KEY:", process.env.ANTHROPIC_API_KEY ? "existe" : "no existe");
 
   const systemPrompt = `Eres un asistente experto en comprobantes de pago peruanos (facturas, boletas, tickets, recibos por honorarios).
 Extrae los datos del comprobante y devuelve SOLO un JSON válido, sin texto adicional, sin markdown, sin explicaciones.
