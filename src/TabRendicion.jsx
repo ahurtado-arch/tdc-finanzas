@@ -63,7 +63,7 @@ export default function TabRendicion({ tipo, rendiciones }) {
   const monto  = sel ? Number(sel.montoAsignado || 0) : 0;
   const saldo  = monto + totalI - totalE;
 
-  const headersCC   = ["Proyecto","Tipo Gasto","Partida","Fecha Pago","# Comp.","Emisión","Proveedor","Referencia","Tipo Doc","Monto","Tipo","Estado",""];
+ const headersCC = ["Proyecto","Tipo Gasto","Fecha Pago","# Comp.","Emisión","Proveedor","Referencia","Tipo Doc","Monto","Tipo",""];
   const headersMeta = ["Proyecto","Fecha Pago","# Comp.","Emisión","Proveedor","Referencia","Tipo Doc","Monto","Tipo","Estado",""];
 
   return (
@@ -180,7 +180,6 @@ export default function TabRendicion({ tipo, rendiciones }) {
                     <td style={{padding:"7px 10px"}}><ProjBadge p={item.proyecto}/></td>
                     {tipo==="CC" && <>
                       <td style={{padding:"7px 10px",color:TDC.textDim,fontSize:11,maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.tipoGasto}</td>
-                      <td style={{padding:"7px 10px",color:TDC.grayDim,fontSize:11}}>{item.partida||"—"}</td>
                     </>}
                     <td style={{padding:"7px 10px",color:TDC.gray,fontFamily:"monospace",fontSize:11,whiteSpace:"nowrap"}}>{item.fecha}</td>
                     <td style={{padding:"7px 10px",color:TDC.grayDim,fontFamily:"monospace",fontSize:10,maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.comprobante||"—"}</td>
@@ -192,7 +191,7 @@ export default function TabRendicion({ tipo, rendiciones }) {
                     <td style={{padding:"7px 10px"}}>
                       <span style={{background:item.tipo==="Ingreso"?"rgba(30,140,90,0.15)":"rgba(211,47,47,0.15)",color:item.tipo==="Ingreso"?TDC.green:TDC.redLight,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:700}}>{item.tipo}</span>
                     </td>
-                    <td style={{padding:"7px 10px"}}><span style={{background:`${TDC.navyBorder}40`,color:TDC.grayDim,padding:"2px 7px",borderRadius:5,fontSize:10}}>{item.estadoDoc}</span></td>
+                  
                     <td style={{padding:"7px 10px"}}>
                       <div style={{display:"flex",gap:4}}>
                         <button onClick={()=>setEditingItem({...item})} style={{background:`${TDC.navyBorder}60`,border:"none",borderRadius:6,color:TDC.gray,cursor:"pointer",padding:"4px 8px",fontSize:11}}>✏</button>

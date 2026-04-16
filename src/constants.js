@@ -24,8 +24,10 @@ export const PROJ_COLORS = {
 };
 
 export const TIPO_COLORS = {
-  "Cerco / Lovemark":    "#D32F2F",
-  "Entrega / Movilidad": "#1E8C5A",
+  "Cerco":               "#D32F2F",
+  "Lovemark":            "#E91E63",
+  "Entrega":             "#1E8C5A",
+  "Movilidad":           "#10B981",
   "Impresiones Cerco":   "#F4A825",
   "Impresiones Obra":    "#1565C0",
   "Impresiones Oficina": "#8E24AA",

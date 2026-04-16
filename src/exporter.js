@@ -1,62 +1,70 @@
 import * as XLSX from "xlsx";
 
 export function exportRendicionXLSX(rendicion, tipo) {
-  const empresa = "TALLER DE DISEÑO CONSTRUCTIVO S.A.C";
-  const titulo  = tipo === "CC"
+  const titulo = tipo === "CC"
     ? `MARKETING - Caja Chica ${rendicion.label}`
     : `META ADS - ${rendicion.label}`;
 
-  const headersCC = [
-    "PROYECTO","ETAPA","PARTIDA / SUBPARTIDA","FECHA DE PAGO",
-    "# COMPROBANTE","EMISIÓN","PROVEEDOR O BENEFICIARIO","REFERENCIA",
-    "TIPO DOC","INGRESOS","EGRESOS","BALANCE","ESTADO",
-  ];
-  const headersMeta = [
-    "PROYECTO","FECHA DE PAGO","# COMPROBANTE","EMISIÓN",
-    "PROVEEDOR O BENEFICIARIO","REFERENCIA","TIPO DOC",
-    "INGRESOS","EGRESOS","BALANCE","ESTADO",
-  ];
+  const egresos = rendicion.items.filter(r => r.tipo === "Egreso");
+  const ingresos = rendicion.items.filter(r => r.tipo === "Ingreso");
+  const totalEgreso = egresos.reduce((a, r) => a + Number(r.monto || 0), 0);
+  const totalIngreso = ingresos.reduce((a, r) => a + Number(r.monto || 0), 0);
+  const saldoAnterior = Number(rendicion.montoAsignado || 0);
 
-  const rows = rendicion.items.map(r =>
-    tipo === "CC"
-      ? [r.proyecto||"", r.tipoGasto||"", r.partida||"", r.fecha||"",
-         r.comprobante||"", r.emision||"", r.proveedor||"", r.referencia||"",
-         r.tipoDoc||"",
-         r.tipo==="Ingreso" ? Number(r.monto)||0 : "",
-         r.tipo==="Egreso"  ? Number(r.monto)||0 : "",
-         "", r.estadoDoc||""]
-      : [r.proyecto||"", r.fecha||"", r.comprobante||"", r.emision||"",
-         r.proveedor||"", r.referencia||"", r.tipoDoc||"",
-         r.tipo==="Ingreso" ? Number(r.monto)||0 : "",
-         r.tipo==="Egreso"  ? Number(r.monto)||0 : "",
-         "", r.estadoDoc||""]
-  );
+  // Rows de datos — empiezan en fila 12 (índice 11)
+  const dataRows = egresos.map(r => [
+    r.proyecto || "",
+    r.tipoGasto || "",
+    "",
+    r.fecha || "",
+    r.comprobante || "",
+    r.emision || "",
+    r.proveedor || "",
+    r.referencia || "",
+    "",
+    Number(r.monto || 0),
+    "",
+    "",
+  ]);
 
-  const totalI = rendicion.items
-    .filter(r => r.tipo === "Ingreso")
-    .reduce((a, r) => a + Number(r.monto||0), 0);
-  const totalE = rendicion.items
-    .filter(r => r.tipo === "Egreso")
-    .reduce((a, r) => a + Number(r.monto||0), 0);
+  // Dotaciones / ingresos al final
+  ingresos.forEach(r => {
+    dataRows.push([
+      "", "", "", r.fecha || "", "", r.emision || "",
+      r.proveedor || "", r.referencia || "",
+      Number(r.monto || 0), "", "", "",
+    ]);
+  });
 
   const aoa = [
-    [empresa],
+    // Fila 1 — vacía
+    [],
+    // Fila 2
+    ["TALLER DE DISEÑO CONSTRUCTIVO S.A.C"],
+    // Fila 3
     [titulo],
+    // Fila 4 — vacía
     [],
-    ["DESCRIPCIÓN","","","","","","","","","INGRESOS","EGRESOS","BALANCE","ESTADO"],
-    tipo === "CC" ? headersCC : headersMeta,
+    // Fila 5 — headers principales
+    ["DESCRIPCIÓN","","","","","","","","INGRESOS","EGRESOS","BALANCE","ESTADO DE COMPROBANTES"],
+    // Fila 6 — sub-headers
+    ["PROYECTO","ETAPA","PARTIDA / SUBPARTIDA","FECHA DE PAGO","# COMPROBANTE","EMISIÓN","PROVEEDOR O BENEFICIARIO","REFERENCIA","","","",""],
+    // Fila 7
+    ["","","","","","","","","","MONTO","SALDO",""],
+    // Fila 8 — vacía
     [],
-    ["","","","","","","","SALDO ANTERIOR","",
-      rendicion.montoAsignado||0, "", -(rendicion.montoAsignado||0), ""],
-    ["PERIODO","","","","","","","","", rendicion.montoAsignado||0,"","",""],
+    // Fila 9 — saldo anterior
+    ["","","","","","","","SALDO ANTERIOR", saldoAnterior, "", saldoAnterior, ""],
+    // Fila 10 — periodo
+    ["PERIODO","","","","","","","", totalIngreso, totalEgreso, "", ""],
+    // Fila 11 — vacía
     [],
-    ...rows,
-    [],
-    ["","","","","","","","TOTALES","", totalI, totalE, totalI - totalE, ""],
+    // Filas de datos
+    ...dataRows,
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, rendicion.label.substring(0, 31));
-  XLSX.writeFile(wb, `Rendicion_${tipo}_${rendicion.label.replace(/[^a-zA-Z0-9]/g,"_")}.xlsx`);
+  XLSX.writeFile(wb, `Rendicion_${tipo}_${rendicion.label.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`);
 }

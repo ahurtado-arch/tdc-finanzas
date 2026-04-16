@@ -124,7 +124,7 @@ export default function ItemModal({ item, tipo, onSave, onCancel }) {
                 ? <><Spinner/> Analizando…</>
                 : "📄 Subir PDF"}
             </button>
-            <input ref={pdfRef} type="file" accept=".pdf,application/pdf" style={{display:"none"}} onChange={handleScan}/>
+            <input ref={pdfRef} type="file" accept=".pdf,application/pdf,image/*" style={{display:"none"}} onChange={handleScan}/>
             {scanError && <div style={{width:"100%", color:TDC.red, fontSize:12, marginTop:4}}>⚠ {scanError}</div>}
           </div>
 
@@ -162,10 +162,7 @@ export default function ItemModal({ item, tipo, onSave, onCancel }) {
                   {TIPOS_GASTO_CC.map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
-              <div style={{gridColumn:"span 2"}}>
-                <div style={S.label}>Partida / Subpartida</div>
-                <input style={S.input} value={f.partida||""} onChange={e => set("partida", e.target.value)} placeholder="Ej: Movilidad, Materiales de impresión…"/>
-              </div>
+              
             </>}
 
             <div>
@@ -209,12 +206,7 @@ export default function ItemModal({ item, tipo, onSave, onCancel }) {
                 placeholder="0.00" step="0.01"
               />
             </div>
-            <div>
-              <div style={S.label}>Estado del Comprobante</div>
-              <select style={S.select} value={f.estadoDoc||"Pendiente"} onChange={e => set("estadoDoc", e.target.value)}>
-                {["Pendiente","Recibido","Enviado a Finanzas","Observado"].map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
+            
           </div>
 
           {/* ── Footer ── */}
