@@ -31,7 +31,7 @@ Claves requeridas:
       ? { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } }
       : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = "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";
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
