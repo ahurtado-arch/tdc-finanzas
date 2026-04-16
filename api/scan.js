@@ -41,7 +41,7 @@ Si no puedes leer algún campo usa "" para texto o 0 para monto.`;
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": "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",
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
