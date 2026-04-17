@@ -7,30 +7,31 @@ export function exportRendicionXLSX(rendicion, tipo) {
 
   const egresos = rendicion.items.filter(r => r.tipo === "Egreso");
   const ingresos = rendicion.items.filter(r => r.tipo === "Ingreso");
-  const totalEgreso = egresos.reduce((a, r) => a + Number(r.monto || 0), 0);
+  const totalEgreso  = egresos.reduce((a, r) => a + Number(r.monto || 0), 0);
   const totalIngreso = ingresos.reduce((a, r) => a + Number(r.monto || 0), 0);
   const saldoAnterior = Number(rendicion.montoAsignado || 0);
 
-  // Rows de datos — empiezan en fila 12 (índice 11)
-  const dataRows = egresos.map(r => [
-    r.proyecto || "",
-    r.tipoGasto || "",
-    "",
-    r.fecha || "",
-    r.comprobante || "",
-    r.emision || "",
-    r.proveedor || "",
-    r.referencia || "",
-    "",
-    Number(r.monto || 0),
-    "",
-    "",
+  // Filas de datos — col A vacía, col B=etapa, col C=partida, col D=num, col E=comprobante, col F=emisión, col G=proveedor, col H=referencia, col I=ingreso, col J=egreso
+  const dataRows = egresos.map((r, i) => [
+    "",                          // A - PROYECTO (vacío como en el original)
+    r.tipoGasto || "",           // B - ETAPA
+    "",                          // C - PARTIDA
+    i + 1,                       // D - número correlativo
+    r.comprobante || "",         // E - # COMPROBANTE
+    r.emision || r.fecha || "",  // F - EMISIÓN
+    r.proveedor || "",           // G - PROVEEDOR
+    r.referencia || "",          // H - REFERENCIA
+    "",                          // I - INGRESOS (vacío para egresos)
+    Number(r.monto || 0),        // J - EGRESOS
+    "",                          // K - SALDO
+    "",                          // L - ESTADO
   ]);
 
-  // Dotaciones / ingresos al final
-  ingresos.forEach(r => {
+  // Ingresos/dotaciones
+  ingresos.forEach((r, i) => {
     dataRows.push([
-      "", "", "", r.fecha || "", "", r.emision || "",
+      "", r.tipoGasto || "", "", egresos.length + i + 1,
+      r.comprobante || "", r.emision || r.fecha || "",
       r.proveedor || "", r.referencia || "",
       Number(r.monto || 0), "", "", "",
     ]);
@@ -47,7 +48,7 @@ export function exportRendicionXLSX(rendicion, tipo) {
     [],
     // Fila 5 — headers principales
     ["DESCRIPCIÓN","","","","","","","","INGRESOS","EGRESOS","BALANCE","ESTADO DE COMPROBANTES"],
-    // Fila 6 — sub-headers
+    // Fila 6 — sub-headers columnas
     ["PROYECTO","ETAPA","PARTIDA / SUBPARTIDA","FECHA DE PAGO","# COMPROBANTE","EMISIÓN","PROVEEDOR O BENEFICIARIO","REFERENCIA","","","",""],
     // Fila 7
     ["","","","","","","","","","MONTO","SALDO",""],
