@@ -31,7 +31,7 @@ Claves requeridas:
       ? { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } }
       : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
-    const apiKey = "sk-ant-api03-6GbQ90racFbBtCnz1Xpss2Ub0-P9huLTq54VNrQU9ninpn6APz8w7Y3xKkQOV-ccBq2076fnS2e21jrooCxYHQ-6fTPWAAA";
+    const apiKey = "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";
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
