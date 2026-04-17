@@ -16,8 +16,10 @@ export async function scanPDF(file, tipo) {
   });
 
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || "Error al analizar el comprobante.");
+    const text = await response.text();
+    let errMsg = "Error al analizar el comprobante.";
+    try { errMsg = JSON.parse(text).error || errMsg; } catch {}
+    throw new Error(errMsg);
   }
 
   return await response.json();
