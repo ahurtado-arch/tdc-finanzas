@@ -34,6 +34,8 @@ Claves requeridas:
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
     console.log("KEY EXISTS:", !!process.env.ANTHROPIC_API_KEY);
     console.log("KEY LENGTH:", (process.env.ANTHROPIC_API_KEY || "").length);
+    console.log("KEY START:", apiKey.substring(0, 20));
+    console.log("KEY END:", apiKey.substring(apiKey.length - 10));
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
