@@ -1,336 +1,195 @@
-import * as XLSX from "xlsx";
-import { utils, write } from "xlsx";
+// exporter.js — ExcelJS con estructura exacta de la plantilla TDC
+export async function exportRendicionXLSX(rendicion, tipo) {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  const wsName = rendicion.label.substring(0, 31);
+  const ws = wb.addWorksheet(wsName, {
+    pageSetup: { orientation: "landscape", paperSize: 9 },
+    views: [{ zoomScale: 85 }],
+  });
 
-// Helper para crear estilo de borde
-const border = (left, right, top, bottom) => ({
-  left:   left   ? { style: left,   color: { argb: "FF000000" } } : undefined,
-  right:  right  ? { style: right,  color: { argb: "FF000000" } } : undefined,
-  top:    top    ? { style: top,    color: { argb: "FF000000" } } : undefined,
-  bottom: bottom ? { style: bottom, color: { argb: "FF000000" } } : undefined,
-});
+  const GRAY_HDR  = "FFD8D8D8";
+  const YELLOW    = "FFFFFF00";
+  const GRAY_TOT  = "FFBFBFBF";
+  const RED       = "FFFF0000";
+  const BLACK     = "FF000000";
+  const GRAY_TITLE= "FF595959";
+  const MONEY_FMT = '_-"S/" * #,##0.00_-;\\-"S/" * #,##0.00_-;_-"S/" * "-"??_-;_-@';
+  const DATE_FMT  = "dd/mm/yy";
 
-const fillSolid = (argb) => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+  const solidFill = (argb) => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+  const thin   = { style: "thin",   color: { argb: BLACK } };
+  const medium = { style: "medium", color: { argb: BLACK } };
+  const mkB = (l,r,t,b) => ({
+    left:   l==="m"?medium:l==="t"?thin:{},
+    right:  r==="m"?medium:r==="t"?thin:{},
+    top:    t==="m"?medium:t==="t"?thin:{},
+    bottom: b==="m"?medium:b==="t"?thin:{},
+  });
 
-const GRAY_HEADER = "FFD8D8D8";
-const YELLOW_ROW  = "FFFFFF00";
-const GRAY_TOTAL  = "FFBFBFBF";
-const RED_TEXT    = "FFFF0000";
-const GRAY_TITLE  = "FF595959";
+  const cal  = (sz,bold,color) => ({ name:"Calibri", size:sz, bold:!!bold, color:{argb:color||BLACK} });
+  const swis = (sz,bold) => ({ name:"Swis721 Lt BT", size:sz, bold:!!bold, color:{argb:GRAY_TITLE} });
 
-const MONEY_FORMAT = '_-"S/" * #,##0.00_-;\\-"S/" * #,##0.00_-;_-"S/" * "-"??_-;_-@';
-const DATE_FORMAT  = "dd/mm/yy";
+  const C = (addr, value, style) => {
+    const cell = ws.getCell(addr);
+    if (value !== undefined && value !== null) cell.value = value;
+    if (style?.font)      cell.font      = style.font;
+    if (style?.fill)      cell.fill      = style.fill;
+    if (style?.border)    cell.border    = style.border;
+    if (style?.alignment) cell.alignment = style.alignment;
+    if (style?.numFmt)    cell.numFmt    = style.numFmt;
+  };
 
-export function exportRendicionXLSX(rendicion, tipo) {
   const titulo = tipo === "CC"
     ? `MARKETING - Caja Chica ${rendicion.label}`
     : `META ADS - ${rendicion.label}`;
 
   const egresos = rendicion.items.filter(r => r.tipo === "Egreso");
   const ingresos = rendicion.items.filter(r => r.tipo === "Ingreso");
-  const saldoAnterior = Number(rendicion.montoAsignado || 0);
+  const totalE   = egresos.reduce((a,r) => a+Number(r.monto||0), 0);
+  const totalI   = ingresos.reduce((a,r) => a+Number(r.monto||0), 0);
+  const saldoAnt = Number(rendicion.montoAsignado||0);
 
-  // --- Crear workbook con estilos ---
-  const wb = {
-    SheetNames: [rendicion.label.substring(0, 31)],
-    Sheets: {},
-    Props: {}
-  };
+  // ── Column widths ─────────────────────────────────────────────────────────
+  ws.getColumn("A").width = 11.71;
+  ws.getColumn("B").width = 10.71;
+  ws.getColumn("C").width = 12.00;
+  ws.getColumn("D").width = 11.71;
+  ws.getColumn("E").width = 21.43;
+  ws.getColumn("F").width = 11.86;
+  ws.getColumn("G").width = 36.86;
+  ws.getColumn("H").width = 69.14;
+  ws.getColumn("I").width = 13.14;
+  ws.getColumn("J").width = 8;
+  ws.getColumn("K").width = 8;
+  ws.getColumn("L").width = 24.43;
+  ws.getColumn("L").hidden = true;
+  ws.getColumn("M").width = 11.43;
 
-  const wsName = rendicion.label.substring(0, 31);
-  const ws = {};
+  // ── Row heights ───────────────────────────────────────────────────────────
+  ws.getRow(1).height  = 12;
+  ws.getRow(2).height  = 15;
+  ws.getRow(3).height  = 15;
+  ws.getRow(4).height  = 13.5;
+  for (let r=5; r<=11; r++) ws.getRow(r).height = 12;
 
-  const setCell = (addr, v, s) => {
-    ws[addr] = { v, s, t: typeof v === "number" ? "n" : typeof v === "string" ? "s" : "s" };
-    if (s?.numFmt) ws[addr].z = s.numFmt;
-  };
+  // ── Fila 2 ────────────────────────────────────────────────────────────────
+  C("A2", "TALLER DE DISEÑO CONSTRUCTIVO S.A.C", { font: swis(10,true) });
+  C("A3", titulo, { font: swis(12,true) });
 
-  const setText = (addr, v, s) => { ws[addr] = { v, s, t: "s" }; };
-  const setNum  = (addr, v, s) => { ws[addr] = { v, s, t: "n" }; if (s?.numFmt) ws[addr].z = s.numFmt; };
-  const setForm = (addr, f, s) => { ws[addr] = { f, s, t: "n" }; if (s?.numFmt) ws[addr].z = s.numFmt; };
+  // ── Fila 5: DESCRIPCIÓN / INGRESOS / EGRESOS / BALANCE ───────────────────
+  ws.mergeCells("A5:H5");
+  C("A5","DESCRIPCIÓN",{ font:cal(9,true), fill:solidFill(GRAY_HDR), alignment:{horizontal:"center",vertical:"middle"}, border:mkB("m","t","m","t") });
+  C("I5","INGRESOS",   { font:cal(9,true), fill:solidFill(GRAY_HDR), alignment:{horizontal:"center",vertical:"middle"}, border:mkB("m","t","m","t") });
+  C("J5","EGRESOS",    { font:cal(9,true), fill:solidFill(GRAY_HDR), alignment:{horizontal:"center",vertical:"middle"}, border:mkB("t","t","m","t") });
+  C("K5","BALANCE",    { font:cal(9,true), fill:solidFill(GRAY_HDR), alignment:{horizontal:"center",vertical:"middle"}, border:mkB("t","m","m","t") });
+  ws.mergeCells("L5:L7");
+  C("L5","ESTADO DE COMPROBANTES",{ font:cal(9,true), fill:solidFill(GRAY_HDR), alignment:{horizontal:"center",vertical:"middle",wrapText:true}, border:mkB("m","m","m","m") });
 
-  // --- Fila 2: Empresa ---
-  setText("A2", "TALLER DE DISEÑO CONSTRUCTIVO S.A.C", {
-    font: { name: "Swis721 Lt BT", sz: 10, bold: true, color: { argb: GRAY_TITLE } }
+  // ── Filas 6-7: Encabezados columna ───────────────────────────────────────
+  const hdrs = [["A","PROYECTO"],["B","ETAPA"],["C","PARTIDA / SUBPARTIDA"],["D","FECHA DE PAGO"],["E","# COMPROBANTE"],["F","EMISIÓN"],["G","PROVEEDOR O BENEFICIARIO"],["H","REFERENCIA"]];
+  hdrs.forEach(([col, val]) => {
+    ws.mergeCells(`${col}6:${col}7`);
+    C(`${col}6`, val, { font:cal(9,true), fill:solidFill(GRAY_HDR), alignment:{horizontal:"center",vertical:"middle",wrapText:true}, border:mkB("t","t","t","m") });
   });
+  C("I6","",{ fill:solidFill(GRAY_HDR), border:mkB("m","t","t","t") });
+  C("I7","",{ fill:solidFill(GRAY_HDR), border:mkB("m","t","t","m") });
+  C("J7","MONTO",{ font:cal(9,true), fill:solidFill(GRAY_HDR), alignment:{horizontal:"center",vertical:"middle"}, border:mkB("t","t","t","m") });
+  C("K7","SALDO",{ font:cal(9,true), fill:solidFill(GRAY_HDR), alignment:{horizontal:"center",vertical:"middle"}, border:mkB("t","m","t","m") });
+  ["J6","K6"].forEach(a => C(a,"",{ fill:solidFill(GRAY_HDR), border:mkB("t","t","t","t") }));
 
-  // --- Fila 3: Título ---
-  setText("A3", titulo, {
-    font: { name: "Swis721 Lt BT", sz: 12, bold: true, color: { argb: GRAY_TITLE } }
-  });
-
-  // --- Fila 5: Headers sección ---
-  const hdrStyle = (b) => ({
-    font: { name: "Calibri", sz: 9, bold: true },
-    fill: fillSolid(GRAY_HEADER),
-    alignment: { horizontal: "center", vertical: "center" },
-    border: b
-  });
-
-  setText("A5", "DESCRIPCIÓN", hdrStyle(border("medium","thin","medium","thin")));
-  setText("I5", "INGRESOS",    hdrStyle(border("medium","thin","medium","thin")));
-  setText("J5", "EGRESOS",     hdrStyle(border("thin","thin","medium","thin")));
-  setText("K5", "BALANCE",     hdrStyle(border("thin","medium","medium","thin")));
-  setText("L5", "ESTADO DE COMPROBANTES", hdrStyle(border("medium","medium","medium","medium")));
-
-  // Celdas B5:H5 vacías con estilo
-  ["B5","C5","D5","E5","F5","G5","H5"].forEach(a =>
-    setText(a, "", hdrStyle(border(undefined,undefined,"medium","thin")))
+  // ── Fila 8: Separadora amarilla ───────────────────────────────────────────
+  "ABCDEFGHIJK".split("").forEach(col =>
+    C(`${col}8`,"",{ fill:solidFill(YELLOW), border:mkB("t","t","t","t") })
   );
+  C("L8","",{ border:mkB(undefined,"m",undefined,undefined) });
 
-  // --- Filas 6-7: Encabezados columna ---
-  const colHdrs = [
-    ["A6","PROYECTO"],["B6","ETAPA"],["C6","PARTIDA / SUBPARTIDA"],
-    ["D6","FECHA DE PAGO"],["E6","# COMPROBANTE"],["F6","EMISIÓN"],
-    ["G6","PROVEEDOR O BENEFICIARIO"],["H6","REFERENCIA"]
-  ];
-  colHdrs.forEach(([addr, val]) => {
-    setText(addr, val, {
-      font: { name: "Calibri", sz: 9, bold: true },
-      fill: fillSolid(GRAY_HEADER),
-      alignment: { horizontal: "center", vertical: "center", wrapText: true },
-      border: border("thin","thin","thin","medium")
-    });
-  });
-
-  // I6, J6, K6
-  setText("I6", "", { fill: fillSolid(GRAY_HEADER), border: border("medium","thin","thin","thin") });
-  setText("J6", "", { fill: fillSolid(GRAY_HEADER), border: border("thin","thin","thin","thin") });
-  setText("K6", "", { fill: fillSolid(GRAY_HEADER), border: border("thin","medium","thin","thin") });
-  setText("L6", "", { fill: fillSolid(GRAY_HEADER), border: border(undefined,"medium",undefined,undefined) });
-
-  // Fila 7 — MONTO y SALDO
-  ["A7","B7","C7","D7","E7","F7","G7","H7"].forEach(a =>
-    setText(a, "", { fill: fillSolid(GRAY_HEADER), border: border("thin","thin","thin","medium") })
+  // ── Fila 9: SALDO ANTERIOR ────────────────────────────────────────────────
+  "ABCDEFG".split("").forEach(col =>
+    C(`${col}9`,"",{ fill:solidFill(YELLOW), border:mkB("t","t","t","t") })
   );
-  setText("J7", "MONTO", {
-    font: { name: "Calibri", sz: 9, bold: true },
-    fill: fillSolid(GRAY_HEADER),
-    alignment: { horizontal: "center", vertical: "center" },
-    border: border("thin","thin","thin","medium")
-  });
-  setText("K7", "SALDO", {
-    font: { name: "Calibri", sz: 9, bold: true },
-    fill: fillSolid(GRAY_HEADER),
-    alignment: { horizontal: "center", vertical: "center" },
-    border: border("thin","medium","thin","medium")
-  });
-  setText("I7", "", { fill: fillSolid(GRAY_HEADER), border: border("medium","thin","thin","medium") });
-  setText("L7", "", { fill: fillSolid(GRAY_HEADER), border: border(undefined,"medium",undefined,undefined) });
+  C("H9","SALDO ANTERIOR",{ font:cal(9,true), fill:solidFill(YELLOW), alignment:{horizontal:"right",vertical:"middle",wrapText:true}, border:mkB("t","t","t","t") });
+  C("I9", saldoAnt, { font:cal(10,true), fill:solidFill(YELLOW), numFmt:MONEY_FMT, alignment:{horizontal:"right"}, border:mkB("t","t","t","t") });
+  C("J9", 0,        { font:cal(10,true), fill:solidFill(YELLOW), numFmt:MONEY_FMT, alignment:{horizontal:"right"}, border:mkB("t","t","t","t") });
+  C("K9", saldoAnt, { font:{name:"Calibri",size:10,bold:true,color:{argb:RED}}, fill:solidFill(YELLOW), numFmt:MONEY_FMT, alignment:{horizontal:"right"}, border:mkB("t","m","t","t") });
+  C("L9","",{ fill:solidFill(YELLOW), border:mkB(undefined,"m",undefined,undefined) });
 
-  // --- Fila 8: Separadora amarilla ---
-  ["A8","B8","C8","D8","E8","F8","G8","H8","I8","J8","K8","L8"].forEach(a =>
-    setText(a, "", {
-      fill: fillSolid(YELLOW_ROW),
-      border: border("thin","thin","thin","thin")
-    })
+  // ── Fila 10: PERIODO ──────────────────────────────────────────────────────
+  ws.mergeCells("A10:H10");
+  C("A10","PERIODO",{ font:cal(11,true), fill:solidFill(GRAY_TOT), alignment:{horizontal:"left",vertical:"middle"}, border:mkB("m",undefined,"m",undefined) });
+  C("I10", totalI,        { font:cal(10,true), fill:solidFill(GRAY_TOT), numFmt:MONEY_FMT, alignment:{horizontal:"right"}, border:mkB("t","t","m","t") });
+  C("J10", totalE,        { font:cal(10,true), fill:solidFill(GRAY_TOT), numFmt:MONEY_FMT, alignment:{horizontal:"right"}, border:mkB("t","t","m","t") });
+  C("K10", totalI-totalE, { font:cal(10,true), fill:solidFill(GRAY_TOT), numFmt:MONEY_FMT, alignment:{horizontal:"right"}, border:mkB("t","m","m","t") });
+  C("L10","",{ border:mkB(undefined,"m","t","t") });
+
+  // ── Fila 11: vacía ────────────────────────────────────────────────────────
+  "ABCDEFGHIJK".split("").forEach(col =>
+    C(`${col}11`,"",{ border:mkB("t","t","t","t") })
   );
+  C("L11","",{ border:mkB(undefined,"m",undefined,undefined) });
 
-  // --- Fila 9: SALDO ANTERIOR ---
-  ["A9","B9","C9","D9","E9","F9","G9"].forEach(a =>
-    setText(a, "", { fill: fillSolid(YELLOW_ROW), border: border("thin","thin","thin","thin") })
-  );
-  setText("H9", "SALDO ANTERIOR", {
-    font: { name: "Calibri", sz: 9, bold: true },
-    fill: fillSolid(YELLOW_ROW),
-    alignment: { horizontal: "right", vertical: "center", wrapText: true },
-    border: border("thin","thin","thin","thin")
-  });
-  setNum("I9", saldoAnterior, {
-    font: { name: "Calibri", sz: 10, bold: true },
-    fill: fillSolid(YELLOW_ROW),
-    numFmt: MONEY_FORMAT,
-    alignment: { horizontal: "right" },
-    border: border("thin","thin","thin","thin")
-  });
-  setNum("J9", 0, {
-    font: { name: "Calibri", sz: 10, bold: true },
-    fill: fillSolid(YELLOW_ROW),
-    numFmt: MONEY_FORMAT,
-    alignment: { horizontal: "right" },
-    border: border("thin","thin","thin","thin")
-  });
-  setNum("K9", saldoAnterior, {
-    font: { name: "Calibri", sz: 10, bold: true, color: { argb: RED_TEXT } },
-    fill: fillSolid(YELLOW_ROW),
-    numFmt: MONEY_FORMAT,
-    alignment: { horizontal: "right" },
-    border: border("thin","medium","thin","thin")
-  });
-  setText("L9", "", { fill: fillSolid(YELLOW_ROW), border: border(undefined,"medium",undefined,undefined) });
-
-  // --- Fila 10: PERIODO ---
-  setText("A10", "PERIODO", {
-    font: { name: "Calibri", sz: 11, bold: true },
-    fill: fillSolid(GRAY_TOTAL),
-    alignment: { horizontal: "left", vertical: "center" },
-    border: border("medium",undefined,"medium",undefined)
-  });
-  ["B10","C10","D10","E10","F10","G10","H10"].forEach(a =>
-    setText(a, "", { fill: fillSolid(GRAY_TOTAL), border: border(undefined,undefined,"medium",undefined) })
-  );
-
-  const totalI = ingresos.reduce((a, r) => a + Number(r.monto || 0), 0);
-  const totalE = egresos.reduce((a, r) => a + Number(r.monto || 0), 0);
-
-  setNum("I10", totalI, {
-    font: { name: "Calibri", sz: 10, bold: true },
-    fill: fillSolid(GRAY_TOTAL),
-    numFmt: MONEY_FORMAT,
-    alignment: { horizontal: "right" },
-    border: border("thin","thin","medium","thin")
-  });
-  setNum("J10", totalE, {
-    font: { name: "Calibri", sz: 10, bold: true },
-    fill: fillSolid(GRAY_TOTAL),
-    numFmt: MONEY_FORMAT,
-    alignment: { horizontal: "right" },
-    border: border("thin","thin","medium","thin")
-  });
-  setNum("K10", totalI - totalE, {
-    font: { name: "Calibri", sz: 10, bold: true },
-    fill: fillSolid(GRAY_TOTAL),
-    numFmt: MONEY_FORMAT,
-    alignment: { horizontal: "right" },
-    border: border("thin","medium","medium","thin")
-  });
-  setText("L10", "", { border: border(undefined,"medium","thin","thin") });
-
-  // --- Filas 11+: Fila vacía separadora ---
-  ["A11","B11","C11","D11","E11","F11","G11","H11","I11","J11","K11"].forEach(a =>
-    setText(a, "", { border: border("thin","thin","thin","thin") })
-  );
-  setText("L11", "", { border: border(undefined,"medium",undefined,undefined) });
-
-  // --- Filas de datos ---
-  const dataFont = { name: "Calibri", sz: 10 };
-  const dataBorder = border("thin","thin","thin","thin");
-
-  const parseDate = (s) => {
-    if (!s) return "";
-    const d = new Date(s);
-    if (isNaN(d)) return s;
-    // Excel date serial
-    const epoch = new Date(1899, 11, 30);
-    const serial = Math.floor((d - epoch) / 86400000);
-    return serial;
-  };
-
+  // ── Filas de datos ────────────────────────────────────────────────────────
+  // Estructura exacta de la plantilla:
+  // A=vacío, B=vacío, C=vacío, D=num correlativo, E=comprobante, F=fecha emisión, G=proveedor, H=referencia, I=ingreso, J=egreso (monto)
+  const parseDate = (s) => { if(!s) return null; const d=new Date(s); return isNaN(d)?null:d; };
+  const dataBorder = mkB("t","t","t","t");
   let rowIdx = 12;
 
   egresos.forEach((r, i) => {
-    const row = rowIdx + i;
-    const rStr = String(row);
-
-    setText(`A${rStr}`, r.proyecto || "", { font: dataFont, alignment: { horizontal: "center", vertical: "center" }, border: dataBorder });
-    setText(`B${rStr}`, r.tipoGasto || "", { font: dataFont, alignment: { horizontal: "center" }, border: dataBorder });
-    setText(`C${rStr}`, "", { font: dataFont, border: dataBorder });
-
-    const dateVal = parseDate(r.fecha);
-    ws[`D${rStr}`] = { v: dateVal, t: "n", z: DATE_FORMAT, s: { font: dataFont, alignment: { horizontal: "center" }, border: dataBorder, numFmt: DATE_FORMAT } };
-
-    setText(`E${rStr}`, String(r.comprobante || ""), { font: dataFont, alignment: { horizontal: "center" }, border: dataBorder });
-
-    const emisionVal = parseDate(r.emision || r.fecha);
-    ws[`F${rStr}`] = { v: emisionVal, t: "n", z: DATE_FORMAT, s: { font: dataFont, alignment: { horizontal: "center" }, border: dataBorder, numFmt: DATE_FORMAT } };
-
-    setText(`G${rStr}`, r.proveedor || "", { font: dataFont, alignment: { horizontal: "left" }, border: dataBorder });
-    setText(`H${rStr}`, r.referencia || "", { font: dataFont, alignment: { horizontal: "left", wrapText: true }, border: dataBorder });
-
-    setText(`I${rStr}`, "", { font: dataFont, border: dataBorder });
-    setNum(`J${rStr}`, Number(r.monto || 0), { font: dataFont, numFmt: MONEY_FORMAT, alignment: { horizontal: "right" }, border: dataBorder });
-    setText(`K${rStr}`, "", { font: dataFont, alignment: { horizontal: "right", vertical: "center" }, border: dataBorder });
-    setText(`L${rStr}`, "", { border: border(undefined,"medium",undefined,undefined) });
+    const row = rowIdx++;
+    ws.getRow(row).height = 12;
+    // A, B, C vacíos
+    C(`A${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`B${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`C${row}`,"",{ font:cal(10), border:dataBorder });
+    // D: número correlativo
+    C(`D${row}`, i+1, { font:cal(10), border:dataBorder, alignment:{horizontal:"center"} });
+    // E: comprobante
+    C(`E${row}`, String(r.comprobante||""), { font:cal(10), border:dataBorder, alignment:{horizontal:"center"} });
+    // F: fecha emisión
+    const fc = ws.getCell(`F${row}`);
+    fc.value = parseDate(r.emision||r.fecha);
+    fc.numFmt = DATE_FMT;
+    fc.font = cal(10); fc.border = dataBorder; fc.alignment = {horizontal:"center"};
+    // G: proveedor
+    C(`G${row}`, r.proveedor||"", { font:cal(10), border:dataBorder, alignment:{horizontal:"left"} });
+    // H: referencia
+    C(`H${row}`, r.referencia||"", { font:cal(10), border:dataBorder, alignment:{horizontal:"left",wrapText:true} });
+    // I: vacío para egresos
+    C(`I${row}`,"",{ font:cal(10), border:dataBorder });
+    // J: monto egreso
+    C(`J${row}`, Number(r.monto||0), { font:cal(10), border:dataBorder, numFmt:MONEY_FMT, alignment:{horizontal:"right"} });
+    C(`K${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`L${row}`,"",{ border:mkB(undefined,"m",undefined,undefined) });
   });
 
-  rowIdx += egresos.length;
-
-  ingresos.forEach((r, i) => {
-    const row = rowIdx + i;
-    const rStr = String(row);
-
-    setText(`A${rStr}`, r.proyecto || "", { font: dataFont, alignment: { horizontal: "center" }, border: dataBorder });
-    setText(`B${rStr}`, r.tipoGasto || "", { font: dataFont, border: dataBorder });
-    setText(`C${rStr}`, "", { font: dataFont, border: dataBorder });
-    setText(`D${rStr}`, "", { font: dataFont, border: dataBorder });
-    setText(`E${rStr}`, String(r.comprobante || ""), { font: dataFont, border: dataBorder });
-    setText(`F${rStr}`, "", { font: dataFont, border: dataBorder });
-    setText(`G${rStr}`, r.proveedor || "", { font: dataFont, alignment: { horizontal: "left" }, border: dataBorder });
-    setText(`H${rStr}`, r.referencia || "", { font: dataFont, alignment: { horizontal: "left", wrapText: true }, border: dataBorder });
-    setNum(`I${rStr}`, Number(r.monto || 0), { font: dataFont, numFmt: MONEY_FORMAT, alignment: { horizontal: "right" }, border: dataBorder });
-    setText(`J${rStr}`, "", { font: dataFont, border: dataBorder });
-    setText(`K${rStr}`, "", { font: dataFont, border: dataBorder });
-    setText(`L${rStr}`, "", { border: border(undefined,"medium",undefined,undefined) });
+  ingresos.forEach((r) => {
+    const row = rowIdx++;
+    ws.getRow(row).height = 12;
+    C(`A${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`B${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`C${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`D${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`E${row}`, String(r.comprobante||""), { font:cal(10), border:dataBorder });
+    C(`F${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`G${row}`, r.proveedor||"", { font:cal(10), border:dataBorder, alignment:{horizontal:"left"} });
+    C(`H${row}`, r.referencia||"", { font:cal(10), border:dataBorder, alignment:{horizontal:"left",wrapText:true} });
+    C(`I${row}`, Number(r.monto||0), { font:cal(10), border:dataBorder, numFmt:MONEY_FMT, alignment:{horizontal:"right"} });
+    C(`J${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`K${row}`,"",{ font:cal(10), border:dataBorder });
+    C(`L${row}`,"",{ border:mkB(undefined,"m",undefined,undefined) });
   });
 
-  const lastRow = rowIdx + ingresos.length;
+  // ── Márgenes ──────────────────────────────────────────────────────────────
+  ws.pageSetup.margins = { left:0.7, right:0.7, top:0.75, bottom:0.75, header:0, footer:0 };
 
-  // --- Merged cells ---
-  ws["!merges"] = [
-    { s:{r:4,c:0}, e:{r:4,c:7} },  // A5:H5
-    { s:{r:4,c:11},e:{r:6,c:11} }, // L5:L7
-    { s:{r:5,c:0}, e:{r:6,c:0} },  // A6:A7
-    { s:{r:5,c:1}, e:{r:6,c:1} },  // B6:B7
-    { s:{r:5,c:2}, e:{r:6,c:2} },  // C6:C7
-    { s:{r:5,c:3}, e:{r:6,c:3} },  // D6:D7
-    { s:{r:5,c:4}, e:{r:6,c:4} },  // E6:E7
-    { s:{r:5,c:5}, e:{r:6,c:5} },  // F6:F7
-    { s:{r:5,c:6}, e:{r:6,c:6} },  // G6:G7
-    { s:{r:5,c:7}, e:{r:6,c:7} },  // H6:H7
-    { s:{r:9,c:0}, e:{r:9,c:7} },  // A10:H10
-  ];
-
-  // --- Column widths ---
-  ws["!cols"] = [
-    { wch: 11.71 }, // A
-    { wch: 10.71 }, // B
-    { wch: 12.00 }, // C
-    { wch: 11.71 }, // D
-    { wch: 21.43 }, // E
-    { wch: 11.86 }, // F
-    { wch: 36.86 }, // G
-    { wch: 69.14 }, // H
-    { wch: 13.14 }, // I
-    { wch: 8 },     // J
-    { wch: 8 },     // K
-    { wch: 24.43, hidden: true }, // L — HIDDEN
-    { wch: 11.43 }, // M
-  ];
-
-  // --- Row heights ---
-  ws["!rows"] = [
-    { hpt: 12 }, // row 1
-    { hpt: 15 }, // row 2
-    { hpt: 15 }, // row 3
-    { hpt: 13.5 },
-    { hpt: 12 },
-    { hpt: 12 },
-    { hpt: 12 },
-    { hpt: 12 },
-    { hpt: 12 },
-    { hpt: 12 },
-  ];
-
-  // --- Ref range ---
-  ws["!ref"] = `A1:M${lastRow + 5}`;
-
-  // --- Page setup ---
-  ws["!pageSetup"] = {
-    orientation: "landscape",
-    fitToPage: false,
-    paperSize: 9, // A4
-  };
-  ws["!margins"] = {
-    left: 0.7, right: 0.7, top: 0.75, bottom: 0.75, header: 0, footer: 0
-  };
-
-  wb.Sheets[wsName] = ws;
-
-  const wbout = write(wb, { bookType: "xlsx", type: "array", cellStyles: true });
-  const blob = new Blob([wbout], { type: "application/octet-stream" });
+  // ── Descargar ─────────────────────────────────────────────────────────────
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Rendicion_${tipo}_${rendicion.label.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`;
+  a.download = `Rendicion_${tipo}_${rendicion.label.replace(/[^a-zA-Z0-9]/g,"_")}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }
