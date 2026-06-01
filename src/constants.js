@@ -129,6 +129,45 @@ export const emptyItemMeta = () => ({
   adjunto:null, adjuntoNombre:"",
 });
 
+// ── Movilidad (Planilla FIN-FO-001) ────────────────────────────────────────
+export const EMPLEADORES_MOV = [
+  { razonSocial: "TALLER DE DISEÑO CONSTRUCTIVO SAC", ruc: "20563130955" },
+  { razonSocial: "ESCALA ARQUITECTURA SAC",           ruc: "20605852140" },
+];
+// Proyectos/destinos frecuentes — el campo permite también texto libre
+export const PROYECTOS_MOV = [
+  "OFICINA PRINCIPAL","PC","AQ","LC","A2","A3","ML","CIX","PSA","COLÓN","BRUJAS","GENERAL",
+];
+
+export const emptyPlanillaMov = () => ({
+  id: uid(),
+  numero: "",
+  periodo: mesLabel(),
+  fecha: today(),                                   // fecha de la planilla
+  razonSocial: EMPLEADORES_MOV[0].razonSocial,
+  ruc: EMPLEADORES_MOV[0].ruc,
+  trabajador: "",
+  dni: "",
+  fechaCreacion: today(),
+  items: [],
+});
+
+export const emptyItemMov = () => ({
+  id: uid(),
+  fecha: today(),     // fecha del gasto (ISO); de aquí se derivan día/mes/año
+  motivo: "",
+  destino: "",
+  proyecto: "",
+  monto: "",
+});
+
+// Etiqueta legible de una planilla para el selector
+export const movLabel = p => {
+  const t = (p.trabajador || "").trim() || "Sin trabajador";
+  const num = p.numero ? `N° ${p.numero} · ` : "";
+  return `${num}${t}${p.periodo ? " · " + p.periodo : ""}`;
+};
+
 export const S = {
   card:      { background:TDC.card, border:`1px solid ${TDC.border}`, borderRadius:RADIUS.lg, padding:20, boxShadow:SHADOW.sm },
   cardLabel: { fontSize:10, fontWeight:700, color:TDC.faint, textTransform:"uppercase", letterSpacing:"0.8px" },

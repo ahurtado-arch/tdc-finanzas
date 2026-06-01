@@ -25,6 +25,7 @@ export const db = getFirestore(app);
 // ── Collection refs ───────────────────────────────────────────────────────────
 export const colCC        = () => collection(db, "rendicionesCC");
 export const colMeta      = () => collection(db, "rendicionesMeta");
+export const colMovilidad = () => collection(db, "planillasMovilidad");
 export const colSolicitudes = () => collection(db, "solicitudes");
 
 // ── Rendicion CRUD ────────────────────────────────────────────────────────────
@@ -45,6 +46,15 @@ export async function saveRendicion(tipo, rendicion) {
 export async function deleteRendicion(tipo, id) {
   const col = tipo === "CC" ? "rendicionesCC" : "rendicionesMeta";
   await deleteDoc(doc(db, col, id));
+}
+
+// ── Movilidad CRUD ──────────────────────────────────────────────────────────
+export async function saveMovilidad(planilla) {
+  const items = (planilla.items || []).map(item => cleanUndefined({ ...item }));
+  await setDoc(doc(db, "planillasMovilidad", planilla.id), cleanUndefined({ ...planilla, items }));
+}
+export async function deleteMovilidad(id) {
+  await deleteDoc(doc(db, "planillasMovilidad", id));
 }
 
 // ── Solicitud CRUD ────────────────────────────────────────────────────────────

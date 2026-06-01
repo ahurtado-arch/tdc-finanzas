@@ -193,3 +193,154 @@ export async function exportRendicionXLSX(rendicion, tipo) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PLANILLA DE MOVILIDAD — réplica de la plantilla oficial FIN-FO-001
+// ─────────────────────────────────────────────────────────────────────────────
+export function buildMovilidadWorkbook(planilla, ExcelJS) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet((planilla.trabajador || "Movilidad").substring(0, 31), {
+    pageSetup: { orientation: "portrait", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+    views: [{ zoomScale: 90 }],
+  });
+
+  const BLACK = "FF000000", GRAY_HDR = "FFD9D9D9", GRAY_TOT = "FFBFBFBF", DARK = "FF595959";
+  const MONEY = '"S/" #,##0.00';
+  const solid = argb => ({ type:"pattern", pattern:"solid", fgColor:{ argb } });
+  const thin = { style:"thin", color:{ argb:BLACK } };
+  const allThin = { top:thin, bottom:thin, left:thin, right:thin };
+  const cal = (sz, bold, color, italic) => ({ name:"Calibri", size:sz, bold:!!bold, italic:!!italic, color:{ argb:color||BLACK } });
+  const center = { horizontal:"center", vertical:"middle", wrapText:true };
+  const left   = { horizontal:"left",   vertical:"middle", wrapText:true };
+  const C = (addr, value, st={}) => {
+    const c = ws.getCell(addr);
+    if (value !== undefined && value !== null) c.value = value;
+    if (st.font) c.font = st.font;
+    if (st.fill) c.fill = st.fill;
+    if (st.border) c.border = st.border;
+    if (st.alignment) c.alignment = st.alignment;
+    if (st.numFmt) c.numFmt = st.numFmt;
+    return c;
+  };
+
+  // ── Anchos ──
+  ws.getColumn("A").width = 6.5;   // DÍA
+  ws.getColumn("B").width = 6.5;   // MES
+  ws.getColumn("C").width = 6.5;   // AÑO
+  ws.getColumn("D").width = 38;    // MOTIVO
+  ws.getColumn("E").width = 20;    // DESTINO
+  ws.getColumn("F").width = 16;    // PROYECTO
+  ws.getColumn("G").width = 13;    // VIAJE
+  ws.getColumn("H").width = 13;    // DÍA (subtotal)
+
+  // ── Cabecera (filas 1-4) ──
+  ws.mergeCells("A1:C4");
+  C("A1", "TALLER DE DISEÑO\nCONSTRUCTIVO", { font:cal(11,true,DARK), alignment:center, border:allThin });
+  ws.mergeCells("D1:F1"); C("D1","MEJORA CONTINUA",      { font:cal(10,true), alignment:center, border:allThin });
+  ws.mergeCells("D2:F4"); C("D2","PLANILLA DE MOVILIDAD", { font:cal(14,true), alignment:center, border:allThin });
+  C("G1","FIN-FO-001",        { font:cal(9), alignment:center, border:allThin }); ws.mergeCells("G1:H1");
+  C("G2","Fecha: 07/10/2025", { font:cal(9), alignment:center, border:allThin }); ws.mergeCells("G2:H2");
+  C("G3","Nro. Página 1 de 1",{ font:cal(9), alignment:center, border:allThin }); ws.mergeCells("G3:H3");
+  C("G4","Versión: 01",       { font:cal(9), alignment:center, border:allThin }); ws.mergeCells("G4:H4");
+
+  // ── Datos de la planilla ──
+  C("A6","PLANILLA POR GASTO DE MOVILIDAD POR TRABAJADOR", { font:cal(11,true) }); ws.mergeCells("A6:H6");
+  C("A7",`PLANILLA N° ${planilla.numero || ""}`, { font:cal(10,true) }); ws.mergeCells("A7:H7");
+
+  const lbl = (addr, val) => C(addr, val, { font:cal(9,true), fill:solid(GRAY_HDR), alignment:left, border:allThin });
+  const inp = (addr, val) => C(addr, val, { font:cal(9), alignment:left, border:allThin });
+  const fmtFecha = s => { if(!s) return ""; const [y,m,d] = String(s).split("-"); return d&&m&&y ? `${d}/${m}/${y}` : s; };
+
+  lbl("A9","FECHA");    C("B9", fmtFecha(planilla.fecha), { font:cal(9), alignment:left, border:allThin }); ws.mergeCells("B9:C9");
+  lbl("A10","PERIODO"); C("B10", planilla.periodo||"",    { font:cal(9), alignment:left, border:allThin }); ws.mergeCells("B10:C10");
+
+  C("A12","DATOS DEL EMPLEADOR", { font:cal(10,true), fill:solid(GRAY_HDR), alignment:left, border:allThin }); ws.mergeCells("A12:H12");
+  lbl("A13","RAZÓN SOCIAL"); inp("B13", planilla.razonSocial||""); ws.mergeCells("B13:H13");
+  lbl("A14","RUC");          inp("B14", planilla.ruc||"");          ws.mergeCells("B14:H14");
+
+  C("A16","DATOS DEL TRABAJADOR", { font:cal(10,true), fill:solid(GRAY_HDR), alignment:left, border:allThin }); ws.mergeCells("A16:H16");
+  lbl("A17","NOMBRE"); inp("B17", planilla.trabajador||""); ws.mergeCells("B17:H17");
+  lbl("A18","DNI");    inp("B18", planilla.dni||"");         ws.mergeCells("B18:H18");
+
+  // ── Encabezado de la tabla (filas 20-21) ──
+  const hdr = st => ({ font:cal(9,true), fill:solid(GRAY_HDR), alignment:center, border:allThin, ...st });
+  ws.mergeCells("A20:C20"); C("A20","FECHA DEL GASTO",   hdr());
+  ws.mergeCells("D20:F20"); C("D20","DESPLAZAMIENTO",     hdr());
+  ws.mergeCells("G20:H20"); C("G20","MONTO GASTADO POR",  hdr());
+  C("A21","DÍA",hdr()); C("B21","MES",hdr()); C("C21","AÑO",hdr());
+  C("D21","MOTIVO",hdr()); C("E21","DESTINO",hdr()); C("F21","PROYECTO",hdr());
+  C("G21","VIAJE",hdr()); C("H21","DÍA",hdr());
+
+  // ── Filas de datos (agrupadas por día, subtotal por día) ──
+  const items = [...(planilla.items||[])].sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+  let row = 22;
+  let grandTotal = 0;
+  let i = 0;
+  while (i < items.length) {
+    const fecha = items[i].fecha;
+    let j = i;
+    let subtotal = 0;
+    const startRow = row;
+    while (j < items.length && items[j].fecha === fecha) {
+      const it = items[j];
+      const [y,m,d] = String(it.fecha||"").split("-");
+      const monto = Number(it.monto||0);
+      subtotal += monto; grandTotal += monto;
+      C(`A${row}`, d?Number(d):"", { font:cal(9), alignment:center, border:allThin });
+      C(`B${row}`, m?Number(m):"", { font:cal(9), alignment:center, border:allThin });
+      C(`C${row}`, y?Number(y):"", { font:cal(9), alignment:center, border:allThin });
+      C(`D${row}`, it.motivo||"",  { font:cal(9), alignment:left,   border:allThin });
+      C(`E${row}`, it.destino||"", { font:cal(9), alignment:left,   border:allThin });
+      C(`F${row}`, it.proyecto||"",{ font:cal(9), alignment:center, border:allThin });
+      C(`G${row}`, monto,          { font:cal(9), alignment:{horizontal:"right",vertical:"middle"}, numFmt:MONEY, border:allThin });
+      C(`H${row}`, "",             { font:cal(9), border:allThin });
+      row++; j++;
+    }
+    // Subtotal del día en H, combinando las filas del grupo
+    if (row-1 >= startRow) {
+      if (row-1 > startRow) ws.mergeCells(`H${startRow}:H${row-1}`);
+      C(`H${startRow}`, subtotal, { font:cal(9,true), alignment:center, numFmt:MONEY, border:allThin });
+    }
+    i = j;
+  }
+  if (items.length === 0) { // fila vacía mínima
+    "ABCDEFGH".split("").forEach(col=>C(`${col}${row}`,"",{ border:allThin })); row++;
+  }
+
+  // ── Total general ──
+  ws.mergeCells(`A${row}:F${row}`);
+  C(`A${row}`,"TOTAL", { font:cal(10,true), fill:solid(GRAY_TOT), alignment:{horizontal:"right",vertical:"middle"}, border:allThin });
+  C(`G${row}`, grandTotal, { font:cal(10,true), fill:solid(GRAY_TOT), numFmt:MONEY, alignment:{horizontal:"right",vertical:"middle"}, border:allThin });
+  C(`H${row}`, grandTotal, { font:cal(10,true), fill:solid(GRAY_TOT), numFmt:MONEY, alignment:{horizontal:"right",vertical:"middle"}, border:allThin });
+  row += 3;
+
+  // ── Firma ──
+  C(`A${row}`,"_____________________________", { font:cal(10) }); ws.mergeCells(`A${row}:C${row}`);
+  C(`F${row}`,"_____________________________", { font:cal(10) }); ws.mergeCells(`F${row}:H${row}`);
+  row++;
+  C(`A${row}`,"V° B°", { font:cal(9,true), alignment:{horizontal:"center"} }); ws.mergeCells(`A${row}:C${row}`);
+  C(`F${row}`,"FIRMA DEL TRABAJADOR", { font:cal(9,true), alignment:{horizontal:"center"} }); ws.mergeCells(`F${row}:H${row}`);
+  row += 2;
+
+  // ── Base legal ──
+  C(`A${row}`,"BASE LEGAL", { font:cal(8,true) }); row++;
+  C(`A${row}`,"Inciso a1) del artículo 37º del TUO de la Ley del Impuesto a la Renta — gastos de movilidad de los trabajadores.",
+    { font:cal(8,false,BLACK,true), alignment:left }); ws.mergeCells(`A${row}:H${row}`);
+
+  ws.pageSetup.margins = { left:0.5, right:0.5, top:0.6, bottom:0.6, header:0, footer:0 };
+  return wb;
+}
+
+export async function exportMovilidadXLSX(planilla) {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = buildMovilidadWorkbook(planilla, ExcelJS);
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const safe = (planilla.trabajador||"planilla").replace(/[^a-zA-Z0-9]/g,"_");
+  a.download = `Movilidad_${safe}_${(planilla.periodo||"").replace(/[^a-zA-Z0-9]/g,"_")}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
