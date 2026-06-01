@@ -163,6 +163,7 @@ export const emptyItemMov = () => ({
 
 // Etiqueta legible de una planilla para el selector
 export const movLabel = p => {
+  if (!p) return "";
   const t = (p.trabajador || "").trim() || "Sin trabajador";
   const num = p.numero ? `N° ${p.numero} · ` : "";
   return `${num}${t}${p.periodo ? " · " + p.periodo : ""}`;

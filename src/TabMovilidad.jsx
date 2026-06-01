@@ -243,7 +243,7 @@ export default function TabMovilidad({ planillas }) {
       </>}
 
       {/* Confirmar eliminar */}
-      {confirmDelete && (
+      {confirmDelete && sel && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(3px)"}}>
           <div style={{background:TDC.card,borderRadius:16,padding:32,maxWidth:420,width:"100%",boxShadow:"0 20px 60px rgba(15,27,39,0.18)",textAlign:"center"}}>
             <div style={{fontSize:40,marginBottom:12}}>🗑</div>
