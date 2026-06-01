@@ -171,7 +171,7 @@ export default function BulkUpload({ tipo, moneda, onSave, onCancel }) {
                         {tipo==="CC" && (
                           <td style={cell}>
                             <select style={miniSelect} value={it.tipoGasto} onChange={e=>setItem(r.id,"tipoGasto",e.target.value)}>
-                              {TIPOS_GASTO_CC.map(t=><option key={t}>{t}</option>)}
+                              {(it.tipoGasto && !TIPOS_GASTO_CC.includes(it.tipoGasto) ? [it.tipoGasto, ...TIPOS_GASTO_CC] : TIPOS_GASTO_CC).map(t=><option key={t}>{t}</option>)}
                             </select>
                           </td>
                         )}

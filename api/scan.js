@@ -24,7 +24,7 @@ Claves requeridas:
   "proveedor": "nombre o razón social",
   "referencia": "descripción máx 80 chars",
   "monto": número,
-  "tipoGasto": "Cerco"|"Lovemark"|"Entrega"|"Movilidad"|"Impresiones Cerco"|"Impresiones Obra"|"Impresiones Oficina"|"Software / Digital"|"Otros"
+  "tipoGasto": "Lovemark"|"Entrega"|"Alquiler"|"Publicidad Exterior"|"Publicidad de Obra"|"Permisos Municipales"|"Material Gráfico"|"Software"|"Otros"
 }`;
 
     const contentPart = mediaType.startsWith("image/")

@@ -148,7 +148,7 @@ export default function ItemModal({ item, tipo, moneda, presupuestos = [], perio
               <div>
                 <div style={S.label}>Tipo de Gasto *</div>
                 <select style={S.select} value={f.tipoGasto} onChange={e=>set("tipoGasto",e.target.value)}>
-                  {TIPOS_GASTO_CC.map(t=><option key={t}>{t}</option>)}
+                  {(f.tipoGasto && !TIPOS_GASTO_CC.includes(f.tipoGasto) ? [f.tipoGasto, ...TIPOS_GASTO_CC] : TIPOS_GASTO_CC).map(t=><option key={t}>{t}</option>)}
                 </select>
               </div>
             )}

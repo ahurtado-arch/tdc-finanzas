@@ -1,5 +1,5 @@
 export const PROYECTOS      = ["LC","A3","LM2","LM3","AQ","PC","GENERAL"];
-export const TIPOS_GASTO_CC = ["Cerco","Lovemark","Entrega","Movilidad","Impresiones Cerco","Impresiones Obra","Impresiones Oficina","Software / Digital","Otros"];
+export const TIPOS_GASTO_CC = ["Lovemark","Entrega","Alquiler","Publicidad Exterior","Publicidad de Obra","Permisos Municipales","Material Gráfico","Software","Otros"];
 export const TIPOS_DOC      = ["Factura","Boleta","Ticket","RPH","Otro"];
 export const MESES          = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 export const MONEDAS        = ["Soles (S/)", "Dólares ($)"];
@@ -91,15 +91,23 @@ export const PROJ_COLORS = {
 };
 
 export const TIPO_COLORS = {
-  "Cerco":               "#C62828",
+  // Categorías actuales
   "Lovemark":            "#AD1457",
   "Entrega":             "#2E7D32",
+  "Alquiler":            "#00695C",
+  "Publicidad Exterior": "#E65100",
+  "Publicidad de Obra":  "#1565C0",
+  "Permisos Municipales":"#6A1B9A",
+  "Material Gráfico":    "#C62828",
+  "Software":            "#0277BD",
+  "Otros":               "#455A64",
+  // Categorías antiguas (para que registros previos sigan mostrando color)
+  "Cerco":               "#C62828",
   "Movilidad":           "#00695C",
   "Impresiones Cerco":   "#E65100",
   "Impresiones Obra":    "#1565C0",
   "Impresiones Oficina": "#6A1B9A",
   "Software / Digital":  "#0277BD",
-  "Otros":               "#455A64",
 };
 
 export const fmtMonto = (n, moneda) => {
