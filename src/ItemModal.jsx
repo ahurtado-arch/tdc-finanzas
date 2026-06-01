@@ -11,16 +11,20 @@ export default function ItemModal({ item, tipo, moneda, presupuestos = [], perio
   const set    = (k, v) => setF(p => ({ ...p, [k]: v }));
   const valid  = f.fecha && f.proveedor && f.monto;
 
-  // ── Vínculo con partida de presupuesto ──
+  // ── Vínculo con partida de presupuesto (cascada Presupuesto → Bloque → Partida) ──
   // Prioriza presupuestos del mismo período (Mes · # · Año) que la rendición.
   const matching = presupuestos.filter(p => samePeriodo(p, periodo));
   const usaFallback = matching.length === 0;
-  const pool = usaFallback ? presupuestos : matching;
-  const linkVal = f.partidaId ? `${f.presId}|${f.bloqueId}|${f.partidaId}` : "";
-  const setLink = v => {
-    const [presId = "", bloqueId = "", partidaId = ""] = (v || "").split("|");
-    setF(p => ({ ...p, presId, bloqueId, partidaId }));
-  };
+  let pool = matching.length ? matching : presupuestos;
+  // Mantener visible el presupuesto ya vinculado aunque no coincida el período.
+  const linked = presupuestos.find(p => p.id === f.presId);
+  if (linked && !pool.some(p => p.id === linked.id)) pool = [linked, ...pool];
+
+  const selPres   = pool.find(p => p.id === f.presId) || null;
+  const selBloque = (selPres?.bloques || []).find(b => b.id === f.bloqueId) || null;
+  const setPres    = v => setF(p => ({ ...p, presId: v, bloqueId: "", partidaId: "" }));
+  const setBloque  = v => setF(p => ({ ...p, bloqueId: v, partidaId: "" }));
+  const setPartida = v => setF(p => ({ ...p, partidaId: v }));
 
   const handleScan = async e => {
     const file = e.target.files[0];
@@ -182,29 +186,46 @@ export default function ItemModal({ item, tipo, moneda, presupuestos = [], perio
               <div style={{fontSize:10,color:TDC.textLight,marginTop:3}}>{moneda}</div>
             </div>
 
-            {/* Vínculo con partida de presupuesto */}
+            {/* Vínculo con partida de presupuesto — cascada de 3 desplegables */}
             <div style={{gridColumn:"span 2"}}>
-              <div style={S.label}>Partida de presupuesto (vincular)</div>
-              <select style={S.select} value={linkVal} onChange={e=>setLink(e.target.value)}>
-                <option value="">— Sin vincular —</option>
-                {pool.map(p => (
-                  <optgroup key={p.id} label={presLabel(p)}>
-                    {(p.bloques || []).flatMap(b =>
-                      (b.items || []).map(it => (
-                        <option key={it.id} value={`${p.id}|${b.id}|${it.id}`}>
-                          {b.nombre} › {it.concepto || "(sin concepto)"}
-                        </option>
-                      ))
-                    )}
-                  </optgroup>
-                ))}
-              </select>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                <div style={S.label}>Partida de presupuesto (vincular)</div>
+                {f.presId && (
+                  <button type="button" onClick={()=>setPres("")}
+                    style={{background:"transparent",border:"none",color:TDC.red,cursor:"pointer",fontSize:11,fontWeight:600,padding:0}}>
+                    Quitar vínculo
+                  </button>
+                )}
+              </div>
+              {pool.length === 0 ? (
+                <div style={{...S.input,color:TDC.textLight,display:"flex",alignItems:"center"}}>No hay presupuestos creados todavía.</div>
+              ) : (
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                  {/* 1) Presupuesto */}
+                  <select style={S.select} value={f.presId||""} onChange={e=>setPres(e.target.value)}>
+                    <option value="">1· Presupuesto…</option>
+                    {pool.map(p=><option key={p.id} value={p.id}>{presLabel(p)}</option>)}
+                  </select>
+                  {/* 2) Bloque */}
+                  <select style={{...S.select,opacity:selPres?1:.5,cursor:selPres?"pointer":"not-allowed"}}
+                    value={f.bloqueId||""} disabled={!selPres} onChange={e=>setBloque(e.target.value)}>
+                    <option value="">2· Bloque…</option>
+                    {(selPres?.bloques||[]).map(b=><option key={b.id} value={b.id}>{b.nombre}</option>)}
+                  </select>
+                  {/* 3) Partida */}
+                  <select style={{...S.select,opacity:selBloque?1:.5,cursor:selBloque?"pointer":"not-allowed"}}
+                    value={f.partidaId||""} disabled={!selBloque} onChange={e=>setPartida(e.target.value)}>
+                    <option value="">3· Partida…</option>
+                    {(selBloque?.items||[]).map(it=><option key={it.id} value={it.id}>{it.concepto||"(sin concepto)"}</option>)}
+                  </select>
+                </div>
+              )}
               <div style={{fontSize:10,color:TDC.textLight,marginTop:3}}>
                 {pool.length === 0
-                  ? "No hay presupuestos creados todavía."
+                  ? ""
                   : usaFallback
                     ? `⚠ No hay presupuesto para ${periodo?.mes ? `${periodo.mes} ${periodo.prog} · ${periodo.anio}` : "este período"}; se muestran todos. El monto sumará al “Monto Final” de la partida elegida.`
-                    : "Egresos vinculados suman automáticamente al “Monto Final” de esa partida en Presupuestos."}
+                    : "Elige Presupuesto → Bloque → Partida. Los egresos vinculados suman automáticamente al “Monto Final” de esa partida."}
               </div>
             </div>
           </div>
