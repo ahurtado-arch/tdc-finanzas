@@ -64,14 +64,12 @@ export default function App() {
   const loading = rendicionesCC===null || rendicionesMeta===null || planillasMov===null || presupuestos===null || solicitudes===null;
 
   const TABS = [
-    { id:"cc",   icon:"💼", label:"Caja Chica"   },
-    { id:"meta", icon:"📣", label:"Meta Ads"     },
-    { id:"mov",  icon:"🚕", label:"Movilidad"    },
-    { id:"pres", icon:"🧾", label:"Presupuestos" },
-    { id:"dash", icon:"📊", label:"Dashboard"    },
+    { id:"cc",   label:"Caja Chica"   },
+    { id:"meta", label:"Meta Ads"     },
+    { id:"mov",  label:"Movilidad"    },
+    { id:"pres", label:"Presupuestos" },
+    { id:"dash", label:"Dashboard"    },
   ];
-  const activeIdx = TABS.findIndex(t => t.id === tab);
-  const TAB_W = 142; // ancho fijo por pestaña → posiciona la pastilla
 
   return (
     <ToastProvider>
@@ -112,13 +110,21 @@ export default function App() {
         /* Toast */
         .tdc-toast{animation:toastIn .28s cubic-bezier(.34,1.45,.5,1)}
 
-        /* Pastilla deslizante del nav */
-        .tdc-pill{
-          position:absolute;top:4px;bottom:4px;width:${TAB_W}px;border-radius:${RADIUS.pill}px;
-          background:${GRADIENT.glass};box-shadow:${SHADOW.redGlow};
-          transition:transform .38s cubic-bezier(.34,1.45,.5,1);
-          z-index:0;
+        /* Botones del nav (estilo SIO: pastilla por ítem) */
+        .tdc-navbtn{
+          display:flex;align-items:center;gap:8px;
+          padding:9px 16px;border:none;border-radius:${RADIUS.pill}px;
+          background:transparent;color:${TDC.muted};cursor:pointer;
+          font-family:${FONT.sans};font-weight:600;font-size:13px;
+          transition:background .2s ease,color .2s ease,box-shadow .2s ease;
+          white-space:nowrap;
         }
+        .tdc-navbtn:not(.is-active):hover{background:${TDC.bg};color:${TDC.ink}}
+        .tdc-navbtn.is-active{
+          background:${GRADIENT.glass};color:#fff;font-weight:700;
+          box-shadow:${SHADOW.redGlow};
+        }
+        .tdc-navbtn svg{width:17px;height:17px;flex:none}
 
         /* Respetar prefers-reduced-motion */
         @media (prefers-reduced-motion: reduce){
@@ -130,12 +136,12 @@ export default function App() {
       <header style={{
         background:TDC.headerBg,
         borderBottom:`1px solid ${TDC.headerBorder}`,
-        display:"flex",alignItems:"center",height:64,
+        display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",height:64,
         padding:"0 24px",position:"sticky",top:0,zIndex:100,
         boxShadow:SHADOW.sm,
       }}>
-        {/* Logo */}
-        <div style={{display:"flex",alignItems:"center",gap:11,marginRight:28}}>
+        {/* Logo (izquierda) */}
+        <div style={{display:"flex",alignItems:"center",gap:11,justifySelf:"start"}}>
           <div style={{
             width:38,height:38,borderRadius:RADIUS.md,
             background:GRADIENT.glass,backdropFilter:"blur(8px)",
@@ -149,31 +155,20 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{width:1,height:26,background:TDC.border,marginRight:24}}/>
-
-        {/* Nav con pastilla deslizante */}
-        <nav style={{position:"relative",display:"flex",background:TDC.bg,borderRadius:RADIUS.pill,padding:4}}>
-          <div className="tdc-pill" style={{transform:`translateX(${Math.max(activeIdx,0)*TAB_W}px)`}}/>
+        {/* Nav (centro) — pastilla por ítem, iconos de línea */}
+        <nav style={{justifySelf:"center",display:"flex",alignItems:"center",gap:4}}>
           {TABS.map(t => {
             const active = tab===t.id;
             return (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                position:"relative",zIndex:1,width:TAB_W,height:40,border:"none",cursor:"pointer",
-                background:"transparent",
-                color: active ? "#fff" : TDC.muted,
-                fontFamily:FONT.sans,
-                fontWeight: active ? 700 : 600,
-                fontSize:13,transition:"color .25s ease",
-                display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-              }}>
-                <span style={{fontSize:15}}>{t.icon}</span> {t.label}
+              <button key={t.id} onClick={() => setTab(t.id)} className={`tdc-navbtn${active?" is-active":""}`}>
+                <NavIcon id={t.id}/> {t.label}
               </button>
             );
           })}
         </nav>
 
-        {/* Live indicator */}
-        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,fontSize:11,color:TDC.faint,fontWeight:600}}>
+        {/* Live indicator (derecha) */}
+        <div style={{justifySelf:"end",display:"flex",alignItems:"center",gap:6,fontSize:11,color:TDC.faint,fontWeight:600}}>
           <div style={{width:7,height:7,borderRadius:"50%",background:loading?TDC.amber:TDC.green,boxShadow:`0 0 0 3px ${loading?TDC.amber:TDC.green}22`,animation:loading?"pulse 1.2s ease-in-out infinite":"none"}}/>
           {loading ? "Conectando…" : "En vivo"}
         </div>
@@ -197,4 +192,44 @@ export default function App() {
     </div>
     </ToastProvider>
   );
+}
+
+// ── Iconos de línea minimalistas para el nav (heredan color vía currentColor) ──
+function NavIcon({ id }) {
+  const p = { fill:"none", stroke:"currentColor", strokeWidth:1.8, strokeLinecap:"round", strokeLinejoin:"round" };
+  const svg = c => <svg viewBox="0 0 24 24" aria-hidden="true">{c}</svg>;
+  switch (id) {
+    case "cc": // Caja Chica → billetera
+      return svg(<>
+        <rect {...p} x="2.5" y="6" width="19" height="13" rx="2.5"/>
+        <path {...p} d="M2.5 10h19"/>
+        <circle {...p} cx="17.5" cy="14.5" r="1.2"/>
+      </>);
+    case "meta": // Meta Ads → megáfono
+      return svg(<>
+        <path {...p} d="M4 9.5v4a1 1 0 0 0 1 1h2l6 3.5v-13L7 8.5H5a1 1 0 0 0-1 1z"/>
+        <path {...p} d="M17 8.5a4 4 0 0 1 0 7"/>
+      </>);
+    case "mov": // Movilidad → auto
+      return svg(<>
+        <path {...p} d="M5 16v-5l2-3.2A1.5 1.5 0 0 1 8.3 7h7.4a1.5 1.5 0 0 1 1.3.8L19 11v5"/>
+        <path {...p} d="M3.5 16h17"/>
+        <circle {...p} cx="7.5" cy="16.5" r="1.6"/>
+        <circle {...p} cx="16.5" cy="16.5" r="1.6"/>
+      </>);
+    case "pres": // Presupuestos → documento
+      return svg(<>
+        <path {...p} d="M6.5 3.5h7l4 4V20a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/>
+        <path {...p} d="M13.5 3.5v4h4"/>
+        <path {...p} d="M9 12.5h6M9 16h4"/>
+      </>);
+    case "dash": // Dashboard → barras
+      return svg(<>
+        <rect {...p} x="3.5" y="12" width="4" height="8" rx="1"/>
+        <rect {...p} x="10" y="8" width="4" height="12" rx="1"/>
+        <rect {...p} x="16.5" y="4" width="4" height="16" rx="1"/>
+      </>);
+    default:
+      return null;
+  }
 }
