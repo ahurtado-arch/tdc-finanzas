@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { saveRendicion, deleteRendicion as fbDeleteRendicion } from "./firebase.js";
 import { exportRendicionXLSX } from "./exporter.js";
 import ItemModal from "./ItemModal.jsx";
@@ -8,7 +8,7 @@ import {
   emptyRendicion, emptyItemCC, emptyItemMeta, MONEDAS,
   MESES, PROGRAMACIONES, ANIOS, periodoActual, rendicionLabel,
 } from "./constants.js";
-import { Button, KPICard, EstadoChip, MonedaChip, EmptyState, useToast } from "./ui.jsx";
+import { Button, KPICard, EstadoChip, EmptyState, useToast } from "./ui.jsx";
 
 export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
   const [selId, setSelId]           = useState(rendiciones[0]?.id || null);
@@ -20,10 +20,28 @@ export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
   const [showBulk, setShowBulk]     = useState(false);
   const [saving, setSaving]         = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false); // pop-up state
+  // Filtros de búsqueda de rendición
+  const [fMes, setFMes]       = useState("");
+  const [fAnio, setFAnio]     = useState("");
+  const [fMoneda, setFMoneda] = useState("");
   const toast = useToast();
 
   const sel = rendiciones.find(r => r.id === selId) || null;
   const moneda = sel?.moneda || "Soles (S/)";
+
+  // Rendiciones que cumplen el filtro (Mes / Año / Moneda)
+  const filtered = rendiciones.filter(r =>
+    (!fMes    || r.mes === fMes) &&
+    (!fAnio   || String(r.anio) === fAnio) &&
+    (!fMoneda || (r.moneda || "Soles (S/)") === fMoneda)
+  );
+  const hasFilter = !!(fMes || fAnio || fMoneda);
+
+  // Al cambiar el filtro, si la rendición activa ya no califica, salta a la primera del resultado
+  useEffect(() => {
+    if (!filtered.some(r => r.id === selId)) setSelId(filtered[0]?.id || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fMes, fAnio, fMoneda]);
 
   // ── Rendicion CRUD ────────────────────────────────────────────────────────
   const createRendicion = async () => {
@@ -169,35 +187,74 @@ export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
         </div>
       )}
 
-      {/* ── Rendicion selector (desplegable) ── */}
+      {/* ── Filtro de búsqueda de rendición ── */}
       {rendiciones.length > 0 && (
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:22,flexWrap:"wrap"}}>
-          <span style={{fontSize:11,color:TDC.faint,fontWeight:600,textTransform:"uppercase",letterSpacing:.6}}>Rendición</span>
-          <select
-            value={selId || ""}
-            onChange={e=>setSelId(e.target.value)}
-            style={{
-              ...S.select,
-              width:"auto",minWidth:260,maxWidth:"100%",cursor:"pointer",
-              fontWeight:600,color:TDC.red600,
-              border:`1px solid ${TDC.coral}`,background:TDC.redLight2,
-            }}>
-            {rendiciones.map(r => (
-              <option key={r.id} value={r.id}>{rendicionLabel(r, tipo)}</option>
-            ))}
-          </select>
-          {sel && <MonedaChip moneda={moneda}/>}
-          <span style={{fontSize:12,color:TDC.faint}}>
-            {rendiciones.length} rendici{rendiciones.length!==1?"ones":"ón"}
-          </span>
+        <div style={{...S.card,marginBottom:22,padding:"14px 16px"}}>
+          <div style={{display:"flex",alignItems:"flex-end",gap:12,flexWrap:"wrap"}}>
+            <div style={{display:"flex",alignItems:"center",gap:7,alignSelf:"center"}}>
+              <span style={{fontSize:14}}>🔎</span>
+              <span style={{fontSize:11,color:TDC.faint,fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>Buscar</span>
+            </div>
+            <div style={{minWidth:140}}>
+              <div style={S.label}>Mes</div>
+              <select style={S.select} value={fMes} onChange={e=>setFMes(e.target.value)}>
+                <option value="">Todos</option>
+                {MESES.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div style={{minWidth:110}}>
+              <div style={S.label}>Año</div>
+              <select style={S.select} value={fAnio} onChange={e=>setFAnio(e.target.value)}>
+                <option value="">Todos</option>
+                {ANIOS.map(a=><option key={a}>{a}</option>)}
+              </select>
+            </div>
+            <div style={{minWidth:150}}>
+              <div style={S.label}>Moneda</div>
+              <select style={S.select} value={fMoneda} onChange={e=>setFMoneda(e.target.value)}>
+                <option value="">Todas</option>
+                {MONEDAS.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div style={{flex:"1 1 240px",minWidth:220}}>
+              <div style={S.label}>Rendición ({filtered.length})</div>
+              <select
+                value={selId || ""}
+                onChange={e=>setSelId(e.target.value)}
+                disabled={filtered.length===0}
+                style={{
+                  ...S.select,cursor:filtered.length?"pointer":"not-allowed",
+                  fontWeight:600,color:TDC.red600,
+                  border:`1px solid ${TDC.coral}`,background:TDC.redLight2,
+                }}>
+                {filtered.length===0 && <option value="">Sin resultados</option>}
+                {filtered.map(r => (
+                  <option key={r.id} value={r.id}>{rendicionLabel(r, tipo)}</option>
+                ))}
+              </select>
+            </div>
+            {hasFilter && (
+              <button onClick={()=>{setFMes("");setFAnio("");setFMoneda("");}}
+                style={{alignSelf:"center",background:"transparent",border:`1px solid ${TDC.border}`,borderRadius:8,color:TDC.muted,cursor:"pointer",padding:"9px 12px",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>
+                ✕ Limpiar
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* ── Empty state ── */}
-      {!sel && (
+      {!sel && rendiciones.length === 0 && (
         <div style={S.card}>
           <EmptyState icon="📋" title="No hay rendiciones aún" subtitle="Crea una nueva rendición para comenzar">
             <Button variant="primary" leftIcon="+" onClick={()=>setShowNew(true)}>Nueva rendición</Button>
+          </EmptyState>
+        </div>
+      )}
+      {!sel && rendiciones.length > 0 && (
+        <div style={S.card}>
+          <EmptyState icon="🔎" title="Sin resultados" subtitle="Ninguna rendición coincide con el filtro seleccionado">
+            <Button variant="outline" onClick={()=>{setFMes("");setFAnio("");setFMoneda("");}}>Limpiar filtro</Button>
           </EmptyState>
         </div>
       )}
