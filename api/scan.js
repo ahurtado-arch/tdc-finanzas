@@ -32,11 +32,9 @@ Claves requeridas:
       : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
-    console.log("KEY EXISTS:", !!process.env.ANTHROPIC_API_KEY);
-    console.log("KEY LENGTH:", (process.env.ANTHROPIC_API_KEY || "").length);
-    console.log("KEY START:", apiKey.substring(0, 20));
-    console.log("KEY END:", apiKey.substring(apiKey.length - 10));
-    console.log("FULL KEY:", apiKey);
+    if (!apiKey) {
+      return res.status(500).json({ error: "Falta configurar ANTHROPIC_API_KEY" });
+    }
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
