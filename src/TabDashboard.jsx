@@ -4,11 +4,13 @@ import {
   TDC, S, PROYECTOS, TIPOS_GASTO_CC, PROJ_COLORS, TIPO_COLORS,
   fmt, fmtMonto, uid, today,
 } from "./constants.js";
+import { Button, KPICard, EstadoChip, EmptyState, Hero, useToast } from "./ui.jsx";
 
 export default function TabDashboard({ rendicionesCC, rendicionesMeta, solicitudes }) {
   const [filterProj, setFilterProj] = useState("TODOS");
   const [showSolForm, setShowSolForm] = useState(false);
   const [solForm, setSolForm] = useState({ fecha:today(), tipo:"Caja Chica", monto:"", motivo:"", proyecto:"GENERAL" });
+  const toast = useToast();
 
   const allCC   = rendicionesCC.flatMap(r => r.items);
   const allMeta = rendicionesMeta.flatMap(r => r.items);
@@ -41,55 +43,53 @@ export default function TabDashboard({ rendicionesCC, rendicionesMeta, solicitud
     await saveSolicitud(s);
     setSolForm(f=>({...f,monto:"",motivo:""}));
     setShowSolForm(false);
+    toast("Solicitud registrada");
   };
-  const handleDeleteSolicitud = async id => await fbDeleteSolicitud(id);
+  const handleDeleteSolicitud = async id => { await fbDeleteSolicitud(id); toast("Solicitud eliminada", { tone:"error" }); };
 
   const btnRed = {
     padding:"8px 16px",border:"none",borderRadius:9,
     background:`linear-gradient(135deg,${TDC.red},${TDC.redLight})`,
-    color:"#fff",fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",
+    color:"#fff",fontFamily:"'General Sans',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",
     boxShadow:"0 2px 8px rgba(211,47,47,0.2)",
   };
 
   return (
     <div>
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
-        <div>
-          <h1 style={{fontSize:24,fontWeight:800,color:TDC.text,letterSpacing:"-0.5px"}}>Dashboard Global</h1>
-          <p style={{fontSize:13,color:TDC.textDim,marginTop:3}}>Vista consolidada de todos los fondos y gastos</p>
-        </div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-          {["TODOS",...PROYECTOS].map(p=>{
-            const active=filterProj===p;
-            const c=PROJ_COLORS[p]||TDC.red;
-            return (
-              <button key={p} onClick={()=>setFilterProj(p)} style={{
-                padding:"5px 13px",borderRadius:20,cursor:"pointer",fontSize:11,fontWeight:700,
-                fontFamily:"'DM Sans',sans-serif",transition:"all .15s",
-                background:active?`${c}15`:"transparent",
-                border:`1px solid ${active?c:TDC.border}`,
-                color:active?c:TDC.textDim,
-              }}>{p}</button>
-            );
-          })}
-        </div>
+      {/* Hero */}
+      <Hero title="Dashboard Global" subtitle="Vista consolidada de todos los fondos y gastos"
+        style={{marginBottom:18}}
+        right={
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:".8px",textTransform:"uppercase",color:"rgba(255,255,255,0.7)"}}>Gasto Total</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontVariantNumeric:"tabular-nums",fontSize:28,fontWeight:700,letterSpacing:"-0.5px"}}>{fmt(ccEgreso+metaEgreso)}</div>
+          </div>
+        }
+      />
+
+      {/* Filtro por proyecto */}
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:20}}>
+        {["TODOS",...PROYECTOS].map(p=>{
+          const active=filterProj===p;
+          const c=PROJ_COLORS[p]||TDC.red500;
+          return (
+            <button key={p} onClick={()=>setFilterProj(p)} style={{
+              padding:"5px 13px",borderRadius:999,cursor:"pointer",fontSize:11,fontWeight:700,
+              fontFamily:"'General Sans',sans-serif",transition:"all .15s",
+              background:active?`${c}15`:TDC.card,
+              border:`1px solid ${active?c:TDC.border}`,
+              color:active?c:TDC.muted,
+            }}>{p}</button>
+          );
+        })}
       </div>
 
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
-        {[
-          ["Gasto Total",      ccEgreso+metaEgreso,  TDC.text,  "CC + Meta combinados"],
-          ["Gasto Caja Chica", ccEgreso,              TDC.red,   `de ${fmt(ccAsignado)} asignados`],
-          ["Gasto Meta Ads",   metaEgreso,            "#6A1B9A", `de ${fmt(metaAsignado)} asignados`],
-          ["Solicitudes",      filtSol.length,        "#E65100", `${fmt(filtSol.reduce((a,s)=>a+Number(s.monto||0),0))} total`],
-        ].map(([label,val,color,sub])=>(
-          <div key={label} style={{...S.card,borderLeft:`4px solid ${color}`}}>
-            <div style={S.cardLabel}>{label}</div>
-            <div style={{fontSize:20,fontWeight:800,color,marginTop:6}}>{typeof val==="number"&&val>0?fmt(val):val}</div>
-            <div style={{fontSize:11,color:TDC.textLight,marginTop:3}}>{sub}</div>
-          </div>
-        ))}
+        <KPICard label="Gasto Total"      value={ccEgreso+metaEgreso} format={fmt} color={TDC.ink}    sub="CC + Meta combinados"/>
+        <KPICard label="Gasto Caja Chica" value={ccEgreso}            format={fmt} color={TDC.red600}  sub={`de ${fmt(ccAsignado)} asignados`}/>
+        <KPICard label="Gasto Meta Ads"   value={metaEgreso}          format={fmt} color="#6A1B9A"     sub={`de ${fmt(metaAsignado)} asignados`}/>
+        <KPICard label="Solicitudes"      value={filtSol.length}      format={v=>Math.round(v)} color={TDC.amber} sub={`${fmt(filtSol.reduce((a,s)=>a+Number(s.monto||0),0))} total`}/>
       </div>
 
       {/* Saldo bars */}
@@ -134,7 +134,7 @@ export default function TabDashboard({ rendicionesCC, rendicionesMeta, solicitud
                 <div style={{flex:1,background:TDC.bg,borderRadius:5,height:12,overflow:"hidden"}}>
                   <div style={{height:"100%",width:(gastoProj[p]/maxProj*100)+"%",background:`linear-gradient(90deg,${PROJ_COLORS[p]},${PROJ_COLORS[p]}99)`,borderRadius:5,transition:"width .7s"}}/>
                 </div>
-                <div style={{width:90,textAlign:"right",fontSize:11,color:TDC.textSub,fontFamily:"monospace"}}>{fmt(gastoProj[p])}</div>
+                <div style={{width:90,textAlign:"right",fontSize:11,color:TDC.textSub,fontFamily:"'Sora',sans-serif"}}>{fmt(gastoProj[p])}</div>
               </div>
             ))
           }
@@ -151,7 +151,7 @@ export default function TabDashboard({ rendicionesCC, rendicionesMeta, solicitud
                     <div style={{height:"100%",width:(gastoCCTipo[t]/maxTipo*100)+"%",background:`linear-gradient(90deg,${TIPO_COLORS[t]||"#999"},${TIPO_COLORS[t]||"#999"}99)`,borderRadius:5,transition:"width .7s"}}/>
                   </div>
                 </div>
-                <div style={{width:80,textAlign:"right",fontSize:11,color:TDC.textSub,fontFamily:"monospace"}}>{fmt(gastoCCTipo[t])}</div>
+                <div style={{width:80,textAlign:"right",fontSize:11,color:TDC.textSub,fontFamily:"'Sora',sans-serif"}}>{fmt(gastoCCTipo[t])}</div>
               </div>
             ))
           }
@@ -162,21 +162,21 @@ export default function TabDashboard({ rendicionesCC, rendicionesMeta, solicitud
       <div style={S.card}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
           <div>
-            <div style={{fontWeight:700,color:TDC.text,fontSize:14}}>Solicitudes de Fondos</div>
-            <div style={{fontSize:12,color:TDC.textDim,marginTop:2}}>Registro de pedidos de dinero por tipo y proyecto</div>
+            <div style={{fontWeight:700,color:TDC.ink,fontSize:14}}>Solicitudes de Fondos</div>
+            <div style={{fontSize:12,color:TDC.muted,marginTop:2}}>Registro de pedidos de dinero por tipo y proyecto</div>
           </div>
-          <button onClick={()=>setShowSolForm(v=>!v)} style={btnRed}>+ Nueva Solicitud</button>
+          <Button variant="primary" size="sm" leftIcon="+" onClick={()=>setShowSolForm(v=>!v)}>Nueva Solicitud</Button>
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
           {[
-            ["Total solicitado", fmt(filtSol.reduce((a,s)=>a+Number(s.monto||0),0)), TDC.text],
-            ["Solicitudes CC",   filtSol.filter(s=>s.tipo==="Caja Chica").length+" veces", TDC.red],
+            ["Total solicitado", fmt(filtSol.reduce((a,s)=>a+Number(s.monto||0),0)), TDC.ink],
+            ["Solicitudes CC",   filtSol.filter(s=>s.tipo==="Caja Chica").length+" veces", TDC.red600],
             ["Solicitudes Meta", filtSol.filter(s=>s.tipo==="Meta").length+" veces", "#6A1B9A"],
           ].map(([l,v,c])=>(
-            <div key={l} style={{background:TDC.bg,borderRadius:10,padding:"12px 14px",border:`1px solid ${TDC.border}`}}>
-              <div style={{fontSize:10,color:TDC.textLight,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>{l}</div>
-              <div style={{fontSize:16,fontWeight:800,color:c,marginTop:5}}>{v}</div>
+            <div key={l} style={{background:TDC.bg,borderRadius:12,padding:"12px 14px",border:`1px solid ${TDC.border}`}}>
+              <div style={{fontSize:10,color:TDC.faint,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>{l}</div>
+              <div style={{fontSize:16,fontWeight:700,color:c,marginTop:5,fontFamily:"'Sora',sans-serif",fontVariantNumeric:"tabular-nums"}}>{v}</div>
             </div>
           ))}
         </div>
@@ -201,8 +201,8 @@ export default function TabDashboard({ rendicionesCC, rendicionesMeta, solicitud
               </div>
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={addSolicitud} style={btnRed}>Guardar</button>
-              <button onClick={()=>setShowSolForm(false)} style={{padding:"8px 16px",border:`1px solid ${TDC.border}`,borderRadius:9,background:"transparent",color:TDC.textDim,fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancelar</button>
+              <Button variant="primary" size="sm" onClick={addSolicitud}>Guardar</Button>
+              <Button variant="outline" size="sm" onClick={()=>setShowSolForm(false)}>Cancelar</Button>
             </div>
           </div>
         )}
@@ -214,20 +214,17 @@ export default function TabDashboard({ rendicionesCC, rendicionesMeta, solicitud
             ))}
           </tr></thead>
           <tbody>
-            {filtSol.length===0&&<tr><td colSpan={6} style={{padding:24,textAlign:"center",color:TDC.textLight,fontStyle:"italic",fontSize:13}}>Sin solicitudes registradas.</td></tr>}
-            {filtSol.map(s=>{
-              const tc=s.tipo==="Caja Chica"?TDC.red:"#6A1B9A";
-              return (
+            {filtSol.length===0&&<tr><td colSpan={6}><EmptyState compact icon="💸" title="Sin solicitudes registradas"/></td></tr>}
+            {filtSol.map(s=>(
                 <tr key={s.id} className="tdc-row" style={{borderBottom:`1px solid ${TDC.border}`,transition:"background .15s"}}>
-                  <td style={{padding:"8px 10px",color:TDC.textDim,fontFamily:"monospace",fontSize:11}}>{s.fecha}</td>
-                  <td style={{padding:"8px 10px"}}><span style={{background:`${tc}15`,color:tc,border:`1px solid ${tc}30`,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:700}}>{s.tipo}</span></td>
+                  <td style={{padding:"8px 10px",color:TDC.muted,fontFamily:"'Sora',sans-serif",fontSize:11}}>{s.fecha}</td>
+                  <td style={{padding:"8px 10px"}}><EstadoChip tone={s.tipo==="Caja Chica"?"danger":"info"} icon="•" label={s.tipo}/></td>
                   <td style={{padding:"8px 10px"}}><ProjBadge p={s.proyecto}/></td>
-                  <td style={{padding:"8px 10px",fontWeight:700,color:TDC.green,fontFamily:"monospace"}}>{fmt(s.monto)}</td>
+                  <td style={{padding:"8px 10px",fontWeight:700,color:TDC.green,fontFamily:"'Sora',sans-serif"}}>{fmt(s.monto)}</td>
                   <td style={{padding:"8px 10px",color:TDC.textSub}}>{s.motivo}</td>
-                  <td style={{padding:"8px 10px"}}><button onClick={()=>handleDeleteSolicitud(s.id)} style={{background:TDC.redLight2,border:`1px solid ${TDC.redLight}`,borderRadius:5,color:TDC.red,cursor:"pointer",padding:"3px 8px",fontSize:11}}>✕</button></td>
+                  <td style={{padding:"8px 10px"}}><button onClick={()=>handleDeleteSolicitud(s.id)} style={{background:TDC.redLight2,border:`1px solid ${TDC.coral}`,borderRadius:8,color:TDC.red600,cursor:"pointer",padding:"3px 8px",fontSize:11}}>✕</button></td>
                 </tr>
-              );
-            })}
+            ))}
           </tbody>
         </table>
       </div>
@@ -241,5 +238,5 @@ function ProjBadge({ p }) {
 }
 
 function EmptyChart() {
-  return <div style={{padding:"20px 0",textAlign:"center",color:TDC.textLight,fontSize:12,fontStyle:"italic"}}>Sin datos registrados aún.</div>;
+  return <EmptyState compact icon="📈" title="Sin datos registrados aún"/>;
 }

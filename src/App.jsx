@@ -3,7 +3,8 @@ import { onSnapshot } from "firebase/firestore";
 import { colCC, colMeta, colSolicitudes } from "./firebase.js";
 import TabRendicion from "./TabRendicion.jsx";
 import TabDashboard from "./TabDashboard.jsx";
-import { TDC } from "./constants.js";
+import { TDC, FONT, RADIUS, SHADOW, GRADIENT } from "./constants.js";
+import { ToastProvider } from "./ui.jsx";
 
 export default function App() {
   const [tab, setTab]       = useState("cc");
@@ -45,80 +46,120 @@ export default function App() {
     { id:"meta", icon:"📣", label:"Meta Ads"   },
     { id:"dash", icon:"📊", label:"Dashboard"  },
   ];
+  const activeIdx = TABS.findIndex(t => t.id === tab);
+  const TAB_W = 150; // ancho fijo por pestaña → posiciona la pastilla
 
   return (
-    <div style={{fontFamily:"'DM Sans',sans-serif",minHeight:"100vh",background:TDC.bg,color:TDC.text}}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <ToastProvider>
+    <div style={{fontFamily:FONT.sans,minHeight:"100vh",background:TDC.bg,color:TDC.ink}}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
-        body{background:${TDC.bg}}
-        ::-webkit-scrollbar{width:5px;height:5px}
+        html,body{background:${TDC.bg};font-family:${FONT.sans};font-variant-numeric:tabular-nums}
+        ::-webkit-scrollbar{width:6px;height:6px}
         ::-webkit-scrollbar-track{background:${TDC.bg}}
         ::-webkit-scrollbar-thumb{background:${TDC.border};border-radius:3px}
-        input,select,textarea{font-family:'DM Sans',sans-serif!important}
+        ::-webkit-scrollbar-thumb:hover{background:${TDC.faint}}
+        input,select,textarea{font-family:${FONT.sans}!important}
         input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.5}
+
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-        .tdc-nav-btn:hover{background:${TDC.bg}!important}
-        .tdc-row:hover{background:#FAFAFA!important}
+        @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+        @keyframes toastIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+
+        /* Botones */
+        .tdc-btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.04)}
+        .tdc-btn:active:not(:disabled){transform:translateY(0)}
+
+        /* Cards con hover: elevación 2px + shadow md */
+        .tdc-card-hover:hover{transform:translateY(-2px);box-shadow:${SHADOW.md}}
+
+        /* Filas de tabla */
+        .tdc-row:hover{background:${TDC.bg}!important}
+
+        /* Skeleton shimmer */
+        .tdc-skeleton{
+          background:linear-gradient(90deg,${TDC.border} 25%,#F1F5F9 37%,${TDC.border} 63%);
+          background-size:800px 100%;
+          animation:shimmer 1.4s ease-in-out infinite;
+        }
+
+        /* Toast */
+        .tdc-toast{animation:toastIn .28s cubic-bezier(.34,1.45,.5,1)}
+
+        /* Pastilla deslizante del nav */
+        .tdc-pill{
+          position:absolute;top:4px;bottom:4px;width:${TAB_W}px;border-radius:${RADIUS.pill}px;
+          background:${GRADIENT.glass};box-shadow:${SHADOW.redGlow};
+          transition:transform .38s cubic-bezier(.34,1.45,.5,1);
+          z-index:0;
+        }
+
+        /* Respetar prefers-reduced-motion */
+        @media (prefers-reduced-motion: reduce){
+          *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+        }
       `}</style>
 
-      {/* ── Header ── */}
+      {/* ── TopBar ── */}
       <header style={{
         background:TDC.headerBg,
         borderBottom:`1px solid ${TDC.headerBorder}`,
-        display:"flex",alignItems:"center",height:60,
+        display:"flex",alignItems:"center",height:64,
         padding:"0 24px",position:"sticky",top:0,zIndex:100,
-        boxShadow:"0 1px 8px rgba(0,0,0,0.08)",
+        boxShadow:SHADOW.sm,
       }}>
         {/* Logo */}
-        <div style={{display:"flex",alignItems:"center",gap:10,marginRight:32}}>
+        <div style={{display:"flex",alignItems:"center",gap:11,marginRight:28}}>
           <div style={{
-            width:36,height:36,borderRadius:9,
-            background:"linear-gradient(135deg,#D32F2F,#EF5350)",
+            width:38,height:38,borderRadius:RADIUS.md,
+            background:GRADIENT.glass,backdropFilter:"blur(8px)",
             display:"flex",alignItems:"center",justifyContent:"center",
-            fontWeight:800,fontSize:14,color:"#fff",
-            boxShadow:"0 2px 10px rgba(211,47,47,0.3)",
+            fontWeight:800,fontSize:14,color:"#fff",fontFamily:FONT.sans,
+            boxShadow:SHADOW.redGlow,
           }}>TDC</div>
           <div>
-            <div style={{fontWeight:700,fontSize:14,color:TDC.text,letterSpacing:"-0.2px",lineHeight:1.2}}>Finanzas</div>
-            <div style={{fontSize:9,color:TDC.textLight,fontWeight:600,letterSpacing:"0.8px",textTransform:"uppercase"}}>Marketing</div>
+            <div style={{fontWeight:700,fontSize:15,color:TDC.ink,letterSpacing:"-0.3px",lineHeight:1.2}}>Finanzas</div>
+            <div style={{fontSize:9,color:TDC.faint,fontWeight:600,letterSpacing:"0.9px",textTransform:"uppercase"}}>Marketing</div>
           </div>
         </div>
 
-        <div style={{width:1,height:24,background:TDC.border,marginRight:24}}/>
+        <div style={{width:1,height:26,background:TDC.border,marginRight:24}}/>
 
-        {/* Nav */}
-        <nav style={{display:"flex",height:"100%"}}>
-          {TABS.map(t => (
-            <button key={t.id} className="tdc-nav-btn" onClick={() => setTab(t.id)} style={{
-              height:"100%",padding:"0 20px",border:"none",cursor:"pointer",
-              background:"transparent",
-              color: tab===t.id ? TDC.red : TDC.textDim,
-              fontFamily:"'DM Sans',sans-serif",
-              fontWeight: tab===t.id ? 700 : 500,
-              fontSize:13,transition:"all .2s",
-              borderBottom: tab===t.id ? `2px solid ${TDC.red}` : "2px solid transparent",
-              display:"flex",alignItems:"center",gap:7,
-            }}>
-              <span style={{fontSize:15}}>{t.icon}</span> {t.label}
-            </button>
-          ))}
+        {/* Nav con pastilla deslizante */}
+        <nav style={{position:"relative",display:"flex",background:TDC.bg,borderRadius:RADIUS.pill,padding:4}}>
+          <div className="tdc-pill" style={{transform:`translateX(${Math.max(activeIdx,0)*TAB_W}px)`}}/>
+          {TABS.map(t => {
+            const active = tab===t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)} style={{
+                position:"relative",zIndex:1,width:TAB_W,height:40,border:"none",cursor:"pointer",
+                background:"transparent",
+                color: active ? "#fff" : TDC.muted,
+                fontFamily:FONT.sans,
+                fontWeight: active ? 700 : 600,
+                fontSize:13,transition:"color .25s ease",
+                display:"flex",alignItems:"center",justifyContent:"center",gap:7,
+              }}>
+                <span style={{fontSize:15}}>{t.icon}</span> {t.label}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Live indicator */}
-        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,fontSize:11,color:TDC.textLight}}>
-          <div style={{width:6,height:6,borderRadius:"50%",background:loading?"#F4A825":TDC.green,animation:loading?"pulse 1.2s ease-in-out infinite":"none"}}/>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,fontSize:11,color:TDC.faint,fontWeight:600}}>
+          <div style={{width:7,height:7,borderRadius:"50%",background:loading?TDC.amber:TDC.green,boxShadow:`0 0 0 3px ${loading?TDC.amber:TDC.green}22`,animation:loading?"pulse 1.2s ease-in-out infinite":"none"}}/>
           {loading ? "Conectando…" : "En vivo"}
         </div>
       </header>
 
       {/* ── Loading ── */}
       {loading ? (
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"calc(100vh - 60px)",flexDirection:"column",gap:16}}>
-          <div style={{width:36,height:36,border:`3px solid ${TDC.border}`,borderTop:`3px solid ${TDC.red}`,borderRadius:"50%",animation:"spin 0.9s linear infinite"}}/>
-          <div style={{color:TDC.textDim,fontSize:13}}>Cargando datos…</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"calc(100vh - 64px)",flexDirection:"column",gap:16}}>
+          <div style={{width:38,height:38,border:`3px solid ${TDC.border}`,borderTop:`3px solid ${TDC.red500}`,borderRadius:"50%",animation:"spin 0.9s linear infinite"}}/>
+          <div style={{color:TDC.muted,fontSize:13}}>Cargando datos…</div>
         </div>
       ) : (
         <main style={{padding:"28px 24px",maxWidth:1440,margin:"0 auto",animation:"fadeUp .25s ease"}}>
@@ -128,5 +169,6 @@ export default function App() {
         </main>
       )}
     </div>
+    </ToastProvider>
   );
 }

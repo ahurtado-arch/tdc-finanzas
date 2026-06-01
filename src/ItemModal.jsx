@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { scanPDF } from "./aiScanner.js";
 import { PROYECTOS, TIPOS_GASTO_CC, TIPOS_DOC, TDC, S, today, MONEDAS } from "./constants.js";
+import { Button } from "./ui.jsx";
 
 export default function ItemModal({ item, tipo, moneda, onSave, onCancel }) {
   const [f, setF]           = useState({ ...item });
@@ -41,7 +42,7 @@ export default function ItemModal({ item, tipo, moneda, onSave, onCancel }) {
   const btnRed = {
     padding:"9px 22px",border:"none",borderRadius:9,cursor:valid?"pointer":"not-allowed",
     background:valid?`linear-gradient(135deg,${TDC.red},${TDC.redLight})`:"#FFCDD2",
-    color:valid?"#fff":TDC.redLight,fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:13,
+    color:valid?"#fff":TDC.redLight,fontFamily:"'General Sans',sans-serif",fontWeight:700,fontSize:13,
     transition:"all .2s",boxShadow:valid?"0 2px 8px rgba(211,47,47,0.25)":"none",
   };
 
@@ -91,7 +92,7 @@ export default function ItemModal({ item, tipo, moneda, onSave, onCancel }) {
             <button onClick={()=>!scanning&&pdfRef.current.click()} disabled={scanning} style={{
               padding:"8px 16px",border:"none",borderRadius:9,
               background:scanning?"#EF9A9A":`linear-gradient(135deg,${TDC.red},${TDC.redLight})`,
-              color:"#fff",fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:12,
+              color:"#fff",fontFamily:"'General Sans',sans-serif",fontWeight:700,fontSize:12,
               cursor:scanning?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:7,
               boxShadow:scanning?"none":"0 2px 8px rgba(211,47,47,0.25)",
             }}>
@@ -111,7 +112,7 @@ export default function ItemModal({ item, tipo, moneda, onSave, onCancel }) {
               const bg     = t==="Ingreso" ? TDC.greenLight : TDC.redLight2;
               return (
                 <button key={t} onClick={()=>set("tipo",t)} style={{
-                  padding:"9px 24px",borderRadius:10,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+                  padding:"9px 24px",borderRadius:10,cursor:"pointer",fontFamily:"'General Sans',sans-serif",
                   border:`1.5px solid ${active?color:TDC.border}`,
                   background:active?bg:"transparent",
                   color:active?color:TDC.textDim,fontWeight:700,fontSize:13,transition:"all .15s",
@@ -165,7 +166,7 @@ export default function ItemModal({ item, tipo, moneda, onSave, onCancel }) {
             <div>
               <div style={S.label}>Monto *</div>
               <input type="number"
-                style={{...S.input,color:f.tipo==="Ingreso"?TDC.green:TDC.red,fontWeight:700,...(f._aiScanned?{borderColor:"#FFAB91"}:{})}}
+                style={{...S.input,...S.num,color:f.tipo==="Ingreso"?TDC.green:TDC.red600,fontWeight:700,...(f._aiScanned?{borderColor:"#FFAB91"}:{})}}
                 value={f.monto} onChange={e=>set("monto",e.target.value)} placeholder="0.00" step="0.01"/>
               <div style={{fontSize:10,color:TDC.textLight,marginTop:3}}>{moneda}</div>
             </div>
@@ -173,12 +174,10 @@ export default function ItemModal({ item, tipo, moneda, onSave, onCancel }) {
 
           {/* Footer */}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:22,paddingTop:18,borderTop:`1px solid ${TDC.border}`}}>
-            <button onClick={onCancel} style={{padding:"9px 20px",border:`1px solid ${TDC.border}`,borderRadius:9,background:"transparent",color:TDC.textDim,fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:13,cursor:"pointer"}}>
-              Cancelar
-            </button>
-            <button onClick={()=>valid&&onSave({...f,_aiScanned:undefined})} style={btnRed}>
+            <Button variant="outline" onClick={onCancel}>Cancelar</Button>
+            <Button variant="primary" disabled={!valid} onClick={()=>valid&&onSave({...f,_aiScanned:undefined})}>
               {f._aiScanned ? "✓ Confirmar y Guardar" : "Guardar Registro"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
