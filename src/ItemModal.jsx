@@ -183,8 +183,17 @@ export default function ItemModal({ item, tipo, moneda, presupuestos = [], perio
               <input type="number"
                 style={{...S.input,...S.num,color:f.tipo==="Ingreso"?TDC.green:TDC.red600,fontWeight:700,...(f._aiScanned?{borderColor:"#FFAB91"}:{})}}
                 value={f.monto} onChange={e=>set("monto",e.target.value)} placeholder="0.00" step="0.01"/>
-              <div style={{fontSize:10,color:TDC.textLight,marginTop:3}}>{moneda}</div>
+              <div style={{fontSize:10,color:TDC.textLight,marginTop:3}}>{moneda}{tipo==="META"?" · monto de la factura":""}</div>
             </div>
+            {tipo==="META" && (
+              <div>
+                <div style={S.label}>Impuesto</div>
+                <input type="number"
+                  style={{...S.input,...S.num,color:TDC.amber,fontWeight:700}}
+                  value={f.impuesto||""} onChange={e=>set("impuesto",e.target.value)} placeholder="0.00" step="0.01"/>
+                <div style={{fontSize:10,color:TDC.textLight,marginTop:3}}>Excedente cobrado por el banco (S/)</div>
+              </div>
+            )}
 
             {/* Vínculo con partida de presupuesto — cascada de 3 desplegables */}
             <div style={{gridColumn:"span 2"}}>

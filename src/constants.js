@@ -155,7 +155,7 @@ export const emptyItemMeta = () => ({
   id:uid(), proyecto:"GENERAL",
   fecha:today(), comprobante:"", emision:today(),
   proveedor:"Meta Platforms Ireland Limited", referencia:"",
-  tipoDoc:"Factura", monto:"", tipo:"Egreso",
+  tipoDoc:"Factura", monto:"", impuesto:"", tipo:"Egreso",
   adjunto:null, adjuntoNombre:"",
   ...linkPresupuesto,
 });

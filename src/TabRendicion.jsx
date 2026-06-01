@@ -73,8 +73,10 @@ export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
   };
 
   // ── Totals ────────────────────────────────────────────────────────────────
+  // Egreso efectivo = monto de la factura + impuesto (excedente del banco, solo Meta)
+  const egresoTotal = i => Number(i.monto||0) + Number(i.impuesto||0);
   const totalI = sel ? sel.items.filter(i=>i.tipo==="Ingreso").reduce((a,i)=>a+Number(i.monto||0),0) : 0;
-  const totalE = sel ? sel.items.filter(i=>i.tipo==="Egreso").reduce((a,i)=>a+Number(i.monto||0),0)  : 0;
+  const totalE = sel ? sel.items.filter(i=>i.tipo==="Egreso").reduce((a,i)=>a+egresoTotal(i),0)        : 0;
   const monto  = sel ? Number(sel.montoAsignado||0) : 0;
   const saldo  = monto + totalI - totalE;
 
@@ -248,7 +250,10 @@ export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
                     <td style={{padding:"8px 10px",color:TDC.text,maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.proveedor}</td>
                     <td style={{padding:"8px 10px",color:TDC.textSub,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.referencia}</td>
                     <td style={{padding:"8px 10px"}}><span style={{background:TDC.bg,color:TDC.muted,border:`1px solid ${TDC.border}`,padding:"2px 8px",borderRadius:8,fontSize:10,fontWeight:600}}>{item.tipoDoc}</span></td>
-                    <td style={{padding:"8px 10px",fontWeight:700,color:item.tipo==="Ingreso"?TDC.green:TDC.red600,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap"}}>{fmtMonto(item.monto, moneda)}</td>
+                    <td style={{padding:"8px 10px",fontWeight:700,color:item.tipo==="Ingreso"?TDC.green:TDC.red600,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap"}}>
+                      {fmtMonto(item.monto, moneda)}
+                      {Number(item.impuesto)>0 && <div style={{fontSize:10,fontWeight:600,color:TDC.amber}}>+ imp. {fmtMonto(item.impuesto, moneda)}</div>}
+                    </td>
                     <td style={{padding:"8px 10px"}}>
                       <EstadoChip tone={item.tipo==="Ingreso"?"success":"danger"} label={item.tipo}/>
                     </td>

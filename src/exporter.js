@@ -1,8 +1,7 @@
 // exporter.js — ExcelJS con estructura exacta de la plantilla TDC
 import { rendicionLabel } from "./constants.js";
 
-export async function exportRendicionXLSX(rendicion, tipo) {
-  const ExcelJS = (await import("exceljs")).default;
+export function buildRendicionWorkbook(rendicion, tipo, ExcelJS) {
   const wb = new ExcelJS.Workbook();
   const periodo = rendicionLabel(rendicion, tipo);
   const wsName = periodo.substring(0, 31);
@@ -49,7 +48,8 @@ export async function exportRendicionXLSX(rendicion, tipo) {
 
   const egresos = rendicion.items.filter(r => r.tipo === "Egreso");
   const ingresos = rendicion.items.filter(r => r.tipo === "Ingreso");
-  const totalE   = egresos.reduce((a,r) => a+Number(r.monto||0), 0);
+  // El egreso efectivo incluye el impuesto (excedente del banco, solo Meta)
+  const totalE   = egresos.reduce((a,r) => a+Number(r.monto||0)+Number(r.impuesto||0), 0);
   const totalI   = ingresos.reduce((a,r) => a+Number(r.monto||0), 0);
   const saldoAnt = Number(rendicion.montoAsignado||0);
 
@@ -164,6 +164,27 @@ export async function exportRendicionXLSX(rendicion, tipo) {
     C(`J${row}`, Number(r.monto||0), { font:cal(10), border:dataBorder, numFmt:MONEY_FMT, alignment:{horizontal:"right"} });
     C(`K${row}`,"",{ font:cal(10), border:dataBorder });
     C(`L${row}`,"",{ border:mkB(undefined,"m",undefined,undefined) });
+
+    // Fila del impuesto justo debajo, con el MISMO comprobante (misma clasificación de factura)
+    if (Number(r.impuesto) > 0) {
+      const trow = rowIdx++;
+      ws.getRow(trow).height = 12;
+      C(`A${trow}`,"",{ font:cal(10), border:dataBorder });
+      C(`B${trow}`,"",{ font:cal(10), border:dataBorder });
+      C(`C${trow}`,"",{ font:cal(10), border:dataBorder });
+      C(`D${trow}`,"",{ font:cal(10), border:dataBorder, alignment:{horizontal:"center"} });
+      C(`E${trow}`, String(r.comprobante||""), { font:cal(10), border:dataBorder, alignment:{horizontal:"center"} });
+      const tfc = ws.getCell(`F${trow}`);
+      tfc.value = parseDate(r.emision||r.fecha);
+      tfc.numFmt = DATE_FMT;
+      tfc.font = cal(10); tfc.border = dataBorder; tfc.alignment = {horizontal:"center"};
+      C(`G${trow}`, r.proveedor||"", { font:cal(10), border:dataBorder, alignment:{horizontal:"left"} });
+      C(`H${trow}`, "IMPUESTO DE META", { font:cal(10), border:dataBorder, alignment:{horizontal:"left",wrapText:true} });
+      C(`I${trow}`,"",{ font:cal(10), border:dataBorder });
+      C(`J${trow}`, Number(r.impuesto||0), { font:cal(10), border:dataBorder, numFmt:MONEY_FMT, alignment:{horizontal:"right"} });
+      C(`K${trow}`,"",{ font:cal(10), border:dataBorder });
+      C(`L${trow}`,"",{ border:mkB(undefined,"m",undefined,undefined) });
+    }
   });
 
   ingresos.forEach((r) => {
@@ -186,7 +207,13 @@ export async function exportRendicionXLSX(rendicion, tipo) {
   // ── Márgenes ──────────────────────────────────────────────────────────────
   ws.pageSetup.margins = { left:0.7, right:0.7, top:0.75, bottom:0.75, header:0, footer:0 };
 
-  // ── Descargar ─────────────────────────────────────────────────────────────
+  return wb;
+}
+
+export async function exportRendicionXLSX(rendicion, tipo) {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = buildRendicionWorkbook(rendicion, tipo, ExcelJS);
+  const periodo = rendicionLabel(rendicion, tipo);
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);

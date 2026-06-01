@@ -31,7 +31,8 @@ export default function TabPresupuesto({ presupuestos, rendicionesCC = [], rendi
   [...rendicionesCC, ...rendicionesMeta].forEach(r =>
     (r.items || []).forEach(it => {
       if (!it.partidaId || it.tipo === "Ingreso") return;
-      ejecMap[it.partidaId] = (ejecMap[it.partidaId] || 0) + Number(it.monto || 0);
+      // Lo ejecutado incluye el impuesto (excedente del banco en Meta)
+      ejecMap[it.partidaId] = (ejecMap[it.partidaId] || 0) + Number(it.monto || 0) + Number(it.impuesto || 0);
       cntMap[it.partidaId]  = (cntMap[it.partidaId]  || 0) + 1;
     })
   );
