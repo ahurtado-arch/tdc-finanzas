@@ -3,15 +3,16 @@ import { saveRendicion, deleteRendicion as fbDeleteRendicion } from "./firebase.
 import { exportRendicionXLSX } from "./exporter.js";
 import ItemModal from "./ItemModal.jsx";
 import {
-  TDC, S, PROJ_COLORS, fmtMonto, fmt, uid, today, mesLabel,
+  TDC, S, PROJ_COLORS, fmtMonto, fmt, uid, today,
   emptyRendicion, emptyItemCC, emptyItemMeta, MONEDAS,
+  MESES, PROGRAMACIONES, ANIOS, periodoActual, rendicionLabel,
 } from "./constants.js";
 import { Button, KPICard, EstadoChip, MonedaChip, EmptyState, useToast } from "./ui.jsx";
 
-export default function TabRendicion({ tipo, rendiciones }) {
+export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
   const [selId, setSelId]           = useState(rendiciones[0]?.id || null);
   const [showNew, setShowNew]       = useState(false);
-  const [newLabel, setNewLabel]     = useState("");
+  const [newPeriodo, setNewPeriodo] = useState(periodoActual());
   const [newMonto, setNewMonto]     = useState("");
   const [newMoneda, setNewMoneda]   = useState("Soles (S/)");
   const [editingItem, setEditingItem] = useState(null);
@@ -24,12 +25,11 @@ export default function TabRendicion({ tipo, rendiciones }) {
 
   // ── Rendicion CRUD ────────────────────────────────────────────────────────
   const createRendicion = async () => {
-    const r = emptyRendicion(tipo);
-    if (newLabel.trim()) r.label = newLabel.trim();
+    const r = { ...emptyRendicion(), ...newPeriodo };
     if (newMonto) r.montoAsignado = parseFloat(newMonto) || 0;
     r.moneda = newMoneda;
     await saveRendicion(tipo, r);
-    setSelId(r.id); setShowNew(false); setNewLabel(""); setNewMonto(""); setNewMoneda("Soles (S/)");
+    setSelId(r.id); setShowNew(false); setNewPeriodo(periodoActual()); setNewMonto(""); setNewMoneda("Soles (S/)");
     toast("Rendición creada");
   };
 
@@ -120,10 +120,24 @@ export default function TabRendicion({ tipo, rendiciones }) {
             <span style={{width:8,height:8,borderRadius:"50%",background:TDC.red500,display:"inline-block"}}/>
             Nueva Rendición
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 160px 160px auto",gap:12,alignItems:"end"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1.2fr 0.9fr 0.9fr 140px 150px auto",gap:12,alignItems:"end"}}>
             <div>
-              <div style={S.label}>Nombre del período</div>
-              <input style={S.input} value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder={`${tipo} - ${mesLabel()} - I`}/>
+              <div style={S.label}>Mes</div>
+              <select style={S.select} value={newPeriodo.mes} onChange={e=>setNewPeriodo(p=>({...p,mes:e.target.value}))}>
+                {MESES.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={S.label}># Programación</div>
+              <select style={S.select} value={newPeriodo.prog} onChange={e=>setNewPeriodo(p=>({...p,prog:e.target.value}))}>
+                {PROGRAMACIONES.map(g=><option key={g}>{g}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={S.label}>Año</div>
+              <select style={S.select} value={newPeriodo.anio} onChange={e=>setNewPeriodo(p=>({...p,anio:e.target.value}))}>
+                {ANIOS.map(a=><option key={a}>{a}</option>)}
+              </select>
             </div>
             <div>
               <div style={S.label}>Monto asignado</div>
@@ -137,6 +151,7 @@ export default function TabRendicion({ tipo, rendiciones }) {
             </div>
             <Button variant="primary" onClick={createRendicion} style={{height:40}}>Crear</Button>
           </div>
+          <div style={{fontSize:11,color:TDC.faint,marginTop:10}}>Se mostrará como <b style={{color:TDC.muted}}>{rendicionLabel({...newPeriodo}, tipo)}</b>. El período conecta esta rendición con el presupuesto del mismo Mes · # · Año.</div>
         </div>
       )}
 
@@ -154,7 +169,7 @@ export default function TabRendicion({ tipo, rendiciones }) {
               border:`1px solid ${TDC.coral}`,background:TDC.redLight2,
             }}>
             {rendiciones.map(r => (
-              <option key={r.id} value={r.id}>{r.label}</option>
+              <option key={r.id} value={r.id}>{rendicionLabel(r, tipo)}</option>
             ))}
           </select>
           {sel && <MonedaChip moneda={moneda}/>}
@@ -276,7 +291,7 @@ export default function TabRendicion({ tipo, rendiciones }) {
             <div style={{fontSize:40,marginBottom:12}}>🗑</div>
             <div style={{fontWeight:700,fontSize:18,color:TDC.ink,marginBottom:8}}>¿Eliminar esta rendición?</div>
             <div style={{fontSize:13,color:TDC.muted,marginBottom:6}}>
-              <b style={{color:TDC.ink}}>{sel?.label}</b>
+              <b style={{color:TDC.ink}}>{rendicionLabel(sel, tipo)}</b>
             </div>
             <div style={{fontSize:13,color:TDC.red600,marginBottom:24,background:TDC.redLight2,padding:"10px 14px",borderRadius:8,border:`1px solid ${TDC.coral}`}}>
               ⚠ Esta acción no se puede recuperar. Se eliminarán todos los registros de esta rendición.
@@ -290,7 +305,7 @@ export default function TabRendicion({ tipo, rendiciones }) {
       )}
 
       {editingItem && (
-        <ItemModal item={editingItem} tipo={tipo} moneda={moneda} onSave={saveItem} onCancel={()=>setEditingItem(null)}/>
+        <ItemModal item={editingItem} tipo={tipo} moneda={moneda} presupuestos={presupuestos} periodo={sel} onSave={saveItem} onCancel={()=>setEditingItem(null)}/>
       )}
     </div>
   );

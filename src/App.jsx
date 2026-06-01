@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { onSnapshot } from "firebase/firestore";
-import { colCC, colMeta, colMovilidad, colSolicitudes } from "./firebase.js";
+import { colCC, colMeta, colMovilidad, colSolicitudes, colPresupuestos } from "./firebase.js";
 import TabRendicion from "./TabRendicion.jsx";
 import TabMovilidad from "./TabMovilidad.jsx";
+import TabPresupuesto from "./TabPresupuesto.jsx";
 import TabDashboard from "./TabDashboard.jsx";
 import { TDC, FONT, RADIUS, SHADOW, GRADIENT } from "./constants.js";
 import { ToastProvider } from "./ui.jsx";
@@ -12,6 +13,7 @@ export default function App() {
   const [rendicionesCC,   setRendicionesCC]   = useState(null);
   const [rendicionesMeta, setRendicionesMeta] = useState(null);
   const [planillasMov,    setPlanillasMov]    = useState(null);
+  const [presupuestos,    setPresupuestos]    = useState(null);
   const [solicitudes,     setSolicitudes]     = useState(null);
 
   useEffect(() => {
@@ -42,6 +44,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const unsub = onSnapshot(colPresupuestos(), snap => {
+      const docs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      docs.sort((a,b) => (b.fechaCreacion||"").localeCompare(a.fechaCreacion||""));
+      setPresupuestos(docs);
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
     const unsub = onSnapshot(colSolicitudes(), snap => {
       const docs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
       docs.sort((a,b) => (b.fecha||"").localeCompare(a.fecha||""));
@@ -50,13 +61,14 @@ export default function App() {
     return unsub;
   }, []);
 
-  const loading = rendicionesCC===null || rendicionesMeta===null || planillasMov===null || solicitudes===null;
+  const loading = rendicionesCC===null || rendicionesMeta===null || planillasMov===null || presupuestos===null || solicitudes===null;
 
   const TABS = [
-    { id:"cc",   icon:"💼", label:"Caja Chica" },
-    { id:"meta", icon:"📣", label:"Meta Ads"   },
-    { id:"mov",  icon:"🚕", label:"Movilidad"  },
-    { id:"dash", icon:"📊", label:"Dashboard"  },
+    { id:"cc",   icon:"💼", label:"Caja Chica"   },
+    { id:"meta", icon:"📣", label:"Meta Ads"     },
+    { id:"mov",  icon:"🚕", label:"Movilidad"    },
+    { id:"pres", icon:"🧾", label:"Presupuestos" },
+    { id:"dash", icon:"📊", label:"Dashboard"    },
   ];
   const activeIdx = TABS.findIndex(t => t.id === tab);
   const TAB_W = 142; // ancho fijo por pestaña → posiciona la pastilla
@@ -175,9 +187,10 @@ export default function App() {
         </div>
       ) : (
         <main style={{padding:"28px 24px",maxWidth:1440,margin:"0 auto",animation:"fadeUp .25s ease"}}>
-          {tab==="cc"   && <TabRendicion tipo="CC"   rendiciones={rendicionesCC}/>}
-          {tab==="meta" && <TabRendicion tipo="META" rendiciones={rendicionesMeta}/>}
+          {tab==="cc"   && <TabRendicion tipo="CC"   rendiciones={rendicionesCC}   presupuestos={presupuestos}/>}
+          {tab==="meta" && <TabRendicion tipo="META" rendiciones={rendicionesMeta} presupuestos={presupuestos}/>}
           {tab==="mov"  && <TabMovilidad planillas={planillasMov}/>}
+          {tab==="pres" && <TabPresupuesto presupuestos={presupuestos} rendicionesCC={rendicionesCC} rendicionesMeta={rendicionesMeta}/>}
           {tab==="dash" && <TabDashboard rendicionesCC={rendicionesCC} rendicionesMeta={rendicionesMeta} solicitudes={solicitudes}/>}
         </main>
       )}

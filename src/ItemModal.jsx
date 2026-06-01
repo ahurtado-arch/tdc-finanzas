@@ -1,15 +1,26 @@
 import { useState, useRef } from "react";
 import { scanPDF } from "./aiScanner.js";
-import { PROYECTOS, TIPOS_GASTO_CC, TIPOS_DOC, TDC, S, today, MONEDAS } from "./constants.js";
+import { PROYECTOS, TIPOS_GASTO_CC, TIPOS_DOC, TDC, S, today, MONEDAS, samePeriodo, presLabel } from "./constants.js";
 import { Button } from "./ui.jsx";
 
-export default function ItemModal({ item, tipo, moneda, onSave, onCancel }) {
+export default function ItemModal({ item, tipo, moneda, presupuestos = [], periodo, onSave, onCancel }) {
   const [f, setF]           = useState({ ...item });
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState("");
   const pdfRef = useRef();
   const set    = (k, v) => setF(p => ({ ...p, [k]: v }));
   const valid  = f.fecha && f.proveedor && f.monto;
+
+  // ── Vínculo con partida de presupuesto ──
+  // Prioriza presupuestos del mismo período (Mes · # · Año) que la rendición.
+  const matching = presupuestos.filter(p => samePeriodo(p, periodo));
+  const usaFallback = matching.length === 0;
+  const pool = usaFallback ? presupuestos : matching;
+  const linkVal = f.partidaId ? `${f.presId}|${f.bloqueId}|${f.partidaId}` : "";
+  const setLink = v => {
+    const [presId = "", bloqueId = "", partidaId = ""] = (v || "").split("|");
+    setF(p => ({ ...p, presId, bloqueId, partidaId }));
+  };
 
   const handleScan = async e => {
     const file = e.target.files[0];
@@ -169,6 +180,32 @@ export default function ItemModal({ item, tipo, moneda, onSave, onCancel }) {
                 style={{...S.input,...S.num,color:f.tipo==="Ingreso"?TDC.green:TDC.red600,fontWeight:700,...(f._aiScanned?{borderColor:"#FFAB91"}:{})}}
                 value={f.monto} onChange={e=>set("monto",e.target.value)} placeholder="0.00" step="0.01"/>
               <div style={{fontSize:10,color:TDC.textLight,marginTop:3}}>{moneda}</div>
+            </div>
+
+            {/* Vínculo con partida de presupuesto */}
+            <div style={{gridColumn:"span 2"}}>
+              <div style={S.label}>Partida de presupuesto (vincular)</div>
+              <select style={S.select} value={linkVal} onChange={e=>setLink(e.target.value)}>
+                <option value="">— Sin vincular —</option>
+                {pool.map(p => (
+                  <optgroup key={p.id} label={presLabel(p)}>
+                    {(p.bloques || []).flatMap(b =>
+                      (b.items || []).map(it => (
+                        <option key={it.id} value={`${p.id}|${b.id}|${it.id}`}>
+                          {b.nombre} › {it.concepto || "(sin concepto)"}
+                        </option>
+                      ))
+                    )}
+                  </optgroup>
+                ))}
+              </select>
+              <div style={{fontSize:10,color:TDC.textLight,marginTop:3}}>
+                {pool.length === 0
+                  ? "No hay presupuestos creados todavía."
+                  : usaFallback
+                    ? `⚠ No hay presupuesto para ${periodo?.mes ? `${periodo.mes} ${periodo.prog} · ${periodo.anio}` : "este período"}; se muestran todos. El monto sumará al “Monto Final” de la partida elegida.`
+                    : "Egresos vinculados suman automáticamente al “Monto Final” de esa partida en Presupuestos."}
+              </div>
             </div>
           </div>
 

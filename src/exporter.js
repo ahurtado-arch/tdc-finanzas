@@ -1,8 +1,11 @@
 // exporter.js — ExcelJS con estructura exacta de la plantilla TDC
+import { rendicionLabel } from "./constants.js";
+
 export async function exportRendicionXLSX(rendicion, tipo) {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
-  const wsName = rendicion.label.substring(0, 31);
+  const periodo = rendicionLabel(rendicion, tipo);
+  const wsName = periodo.substring(0, 31);
   const ws = wb.addWorksheet(wsName, {
     pageSetup: { orientation: "landscape", paperSize: 9 },
     views: [{ zoomScale: 85 }],
@@ -41,8 +44,8 @@ export async function exportRendicionXLSX(rendicion, tipo) {
   };
 
   const titulo = tipo === "CC"
-    ? `MARKETING - Caja Chica ${rendicion.label}`
-    : `META ADS - ${rendicion.label}`;
+    ? `MARKETING - Caja Chica ${periodo}`
+    : `META ADS - ${periodo}`;
 
   const egresos = rendicion.items.filter(r => r.tipo === "Egreso");
   const ingresos = rendicion.items.filter(r => r.tipo === "Ingreso");
@@ -189,7 +192,7 @@ export async function exportRendicionXLSX(rendicion, tipo) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Rendicion_${tipo}_${rendicion.label.replace(/[^a-zA-Z0-9]/g,"_")}.xlsx`;
+  a.download = `Rendicion_${tipo}_${periodo.replace(/[^a-zA-Z0-9]/g,"_")}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }

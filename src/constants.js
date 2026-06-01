@@ -4,6 +4,12 @@ export const TIPOS_DOC      = ["Factura","Boleta","Ticket","RPH","Otro"];
 export const MESES          = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 export const MONEDAS        = ["Soles (S/)", "Dólares ($)"];
 
+// ── Período estructurado (llave común Rendición ↔ Presupuesto) ──────────────
+// Reemplaza el nombre libre por Mes + # de programación + Año, de modo que
+// ambos módulos compartan exactamente la misma llave de período.
+export const PROGRAMACIONES = ["I", "II", "III", "IV", "V"];
+export const ANIOS          = ["2026", "2027", "2028", "2029", "2030"];
+
 // ─────────────────────────────────────────────────────────────────────────
 //  SISTEMA DE DISEÑO TDC
 //  Paleta, tipografía, redondez, sombras y gradientes en tokens.
@@ -105,20 +111,44 @@ export const uid   = () => Math.random().toString(36).slice(2,10);
 export const today = () => new Date().toISOString().slice(0,10);
 export const mesLabel = () => { const d=new Date(); return `${MESES[d.getMonth()]} ${d.getFullYear()}`; };
 
-export const emptyRendicion = tipo => ({
+// Período por defecto al crear (mes y año actuales, programación I)
+export const periodoActual = () => { const d=new Date(); return { mes: MESES[d.getMonth()], prog: "I", anio: String(d.getFullYear()) }; };
+
+// Etiqueta legible de un período: "Junio II · 2026"
+export const periodoLabel = (p = {}) =>
+  [[p.mes, p.prog].filter(Boolean).join(" "), p.anio].filter(Boolean).join(" · ");
+
+// ¿Dos documentos comparten el mismo período (mes/prog/año)?
+export const samePeriodo = (a, b) =>
+  !!a && !!b && a.mes === b.mes && a.prog === b.prog && String(a.anio) === String(b.anio);
+
+// Etiqueta de rendición con prefijo de tipo: "CC · Junio II · 2026"
+// Mantiene compatibilidad con rendiciones antiguas que sólo tienen `label`.
+export const rendicionLabel = (r, tipo) => {
+  if (!r) return "";
+  const pref = tipo ? `${tipo} · ` : "";
+  if (r.mes || r.prog || r.anio) return pref + periodoLabel(r);
+  return r.label || `${pref}Sin período`;
+};
+
+export const emptyRendicion = () => ({
   id: uid(),
-  label: `${tipo==="CC"?"CC":"META"} - ${mesLabel()} - I`,
+  ...periodoActual(),
   montoAsignado: 0,
   moneda: "Soles (S/)",
   fechaCreacion: today(),
   items: [],
 });
 
+// Campos de vínculo a presupuesto (compartidos por CC y Meta)
+const linkPresupuesto = { presId: "", bloqueId: "", partidaId: "" };
+
 export const emptyItemCC = () => ({
   id:uid(), proyecto:"GENERAL", tipoGasto:"Otros", partida:"",
   fecha:today(), comprobante:"", emision:today(),
   proveedor:"", referencia:"", tipoDoc:"Boleta",
   monto:"", tipo:"Egreso", adjunto:null, adjuntoNombre:"",
+  ...linkPresupuesto,
 });
 
 export const emptyItemMeta = () => ({
@@ -127,6 +157,7 @@ export const emptyItemMeta = () => ({
   proveedor:"Meta Platforms Ireland Limited", referencia:"",
   tipoDoc:"Factura", monto:"", tipo:"Egreso",
   adjunto:null, adjuntoNombre:"",
+  ...linkPresupuesto,
 });
 
 // ── Movilidad (Planilla FIN-FO-001) ────────────────────────────────────────
@@ -167,6 +198,71 @@ export const movLabel = p => {
   const t = (p.trabajador || "").trim() || "Sin trabajador";
   const num = p.numero ? `N° ${p.numero} · ` : "";
   return `${num}${t}${p.periodo ? " · " + p.periodo : ""}`;
+};
+
+// ── Presupuesto de Marketing (bloques) ─────────────────────────────────────
+export const PRIORIDADES_PRES = ["Alta", "Media", "Baja"];
+export const ESTADOS_PRES     = ["Pendiente", "En proceso", "Completado"];
+export const REGISTRADO_PRES  = ["Sí", "No"];
+
+// Categorías frecuentes (campo libre con sugerencias)
+export const CATEGORIAS_PRES = [
+  "Pauta digital", "Publicidad exterior", "Material gráfico",
+  "Merchandising", "Boxes", "Suscripciones", "Deuda", "Otros",
+];
+
+// Proyectos/frentes frecuentes (campo libre con sugerencias)
+export const PROYECTOS_PRES = [
+  "LC", "A3", "LM2", "LM3", "AQ", "PC", "CIX", "Transversal", "GENERAL",
+];
+
+// Bloques por defecto al crear un presupuesto (renombrables / agregables / removibles)
+export const BLOQUES_PRES_DEFAULT = [
+  "Pauta Digital Meta Ads",
+  "Permisos Municipales",
+  "Publicidad Exterior",
+  "Material Gráfico / Merchandising",
+  "Entregas / Minutas",
+  "Operativo Recurrente (Software)",
+];
+
+export const PRIORIDAD_COLORS = { Alta: "#C81E22", Media: "#F59E0B", Baja: "#6B7C8C" };
+export const ESTADO_COLORS    = { Pendiente: "#9AAAB8", "En proceso": "#7CBCDE", Completado: "#16A34A" };
+
+export const emptyItemPres = () => ({
+  id: uid(),
+  concepto: "",
+  categoria: "",
+  proyecto: "",
+  encargado: "",
+  proveedor: "",
+  prioridad: "Media",
+  fechaRequerida: "",
+  estado: "Pendiente",
+  montoProyectado: "",
+  montoFinal: "",
+  registrado: "No",
+});
+
+export const emptyBloquePres = (nombre = "Nuevo bloque") => ({
+  id: uid(),
+  nombre,
+  items: [],
+});
+
+export const emptyPresupuesto = () => ({
+  id: uid(),
+  ...periodoActual(),
+  fechaCreacion: today(),
+  bloques: BLOQUES_PRES_DEFAULT.map(n => emptyBloquePres(n)),
+});
+
+// Etiqueta de presupuesto = período estructurado ("Junio II · 2026").
+// Compatibilidad: presupuestos antiguos que sólo tienen `titulo`.
+export const presLabel = p => {
+  if (!p) return "Sin título";
+  if (p.mes || p.prog || p.anio) return periodoLabel(p);
+  return (p.titulo || "").trim() || "Sin título";
 };
 
 export const S = {

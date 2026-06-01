@@ -27,6 +27,7 @@ export const colCC        = () => collection(db, "rendicionesCC");
 export const colMeta      = () => collection(db, "rendicionesMeta");
 export const colMovilidad = () => collection(db, "planillasMovilidad");
 export const colSolicitudes = () => collection(db, "solicitudes");
+export const colPresupuestos = () => collection(db, "presupuestos");
 
 // ── Rendicion CRUD ────────────────────────────────────────────────────────────
 function cleanUndefined(obj) {
@@ -55,6 +56,18 @@ export async function saveMovilidad(planilla) {
 }
 export async function deleteMovilidad(id) {
   await deleteDoc(doc(db, "planillasMovilidad", id));
+}
+
+// ── Presupuesto CRUD ──────────────────────────────────────────────────────────
+export async function savePresupuesto(presupuesto) {
+  const bloques = (presupuesto.bloques || []).map(b => cleanUndefined({
+    ...b,
+    items: (b.items || []).map(item => cleanUndefined({ ...item })),
+  }));
+  await setDoc(doc(db, "presupuestos", presupuesto.id), cleanUndefined({ ...presupuesto, bloques }));
+}
+export async function deletePresupuesto(id) {
+  await deleteDoc(doc(db, "presupuestos", id));
 }
 
 // ── Solicitud CRUD ────────────────────────────────────────────────────────────
