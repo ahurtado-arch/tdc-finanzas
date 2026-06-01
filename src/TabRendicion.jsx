@@ -2,6 +2,7 @@ import { useState } from "react";
 import { saveRendicion, deleteRendicion as fbDeleteRendicion } from "./firebase.js";
 import { exportRendicionXLSX } from "./exporter.js";
 import ItemModal from "./ItemModal.jsx";
+import BulkUpload from "./BulkUpload.jsx";
 import {
   TDC, S, PROJ_COLORS, fmtMonto, fmt, uid, today,
   emptyRendicion, emptyItemCC, emptyItemMeta, MONEDAS,
@@ -16,6 +17,7 @@ export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
   const [newMonto, setNewMonto]     = useState("");
   const [newMoneda, setNewMoneda]   = useState("Soles (S/)");
   const [editingItem, setEditingItem] = useState(null);
+  const [showBulk, setShowBulk]     = useState(false);
   const [saving, setSaving]         = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false); // pop-up state
   const toast = useToast();
@@ -70,6 +72,16 @@ export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
     const items = sel.items.filter(i => i.id !== itemId);
     await saveRendicion(tipo, { ...sel, items });
     toast("Registro eliminado", { tone:"error" });
+  };
+
+  // Carga masiva: agrega varios registros de una sola vez
+  const saveBulk = async items => {
+    if (!sel || !items.length) return;
+    setSaving(true);
+    await saveRendicion(tipo, { ...sel, items: [...sel.items, ...items] });
+    setSaving(false);
+    setShowBulk(false);
+    toast(`${items.length} registro${items.length!==1?"s":""} agregado${items.length!==1?"s":""}`);
   };
 
   // ── Totals ────────────────────────────────────────────────────────────────
@@ -220,9 +232,12 @@ export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
               <span style={{color:TDC.faint,fontSize:12,marginLeft:8}}>{sel.items.length} ítem{sel.items.length!==1?"s":""}</span>
               {saving && <span style={{color:TDC.red500,fontSize:11,marginLeft:10}}>Guardando…</span>}
             </div>
-            <Button variant="primary" leftIcon="+" onClick={()=>setEditingItem(tipo==="CC"?emptyItemCC():emptyItemMeta())}>
-              Agregar registro
-            </Button>
+            <div style={{display:"flex",gap:8}}>
+              <Button variant="outline" leftIcon="📥" onClick={()=>setShowBulk(true)}>Subir facturas</Button>
+              <Button variant="primary" leftIcon="+" onClick={()=>setEditingItem(tipo==="CC"?emptyItemCC():emptyItemMeta())}>
+                Agregar registro
+              </Button>
+            </div>
           </div>
 
           <div style={{overflowX:"auto"}}>
@@ -311,6 +326,10 @@ export default function TabRendicion({ tipo, rendiciones, presupuestos = [] }) {
 
       {editingItem && (
         <ItemModal item={editingItem} tipo={tipo} moneda={moneda} presupuestos={presupuestos} periodo={sel} onSave={saveItem} onCancel={()=>setEditingItem(null)}/>
+      )}
+
+      {showBulk && sel && (
+        <BulkUpload tipo={tipo} moneda={moneda} onSave={saveBulk} onCancel={()=>setShowBulk(false)}/>
       )}
     </div>
   );
