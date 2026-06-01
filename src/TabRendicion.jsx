@@ -134,22 +134,28 @@ export default function TabRendicion({ tipo, rendiciones }) {
         </div>
       )}
 
-      {/* ── Rendicion selector ── */}
+      {/* ── Rendicion selector (desplegable) ── */}
       {rendiciones.length > 0 && (
-        <div style={{display:"flex",gap:8,marginBottom:22,overflowX:"auto",paddingBottom:4,flexWrap:"wrap"}}>
-          {rendiciones.map(r => (
-            <div key={r.id} onClick={()=>setSelId(r.id)} style={{
-              padding:"7px 16px",borderRadius:20,cursor:"pointer",whiteSpace:"nowrap",
-              fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:6,
-              background: selId===r.id ? TDC.redLight2 : TDC.surface,
-              border: `1px solid ${selId===r.id ? TDC.red : TDC.border}`,
-              color: selId===r.id ? TDC.red : TDC.textDim,
-              transition:"all .2s",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:22,flexWrap:"wrap"}}>
+          <span style={{fontSize:11,color:TDC.textLight,fontWeight:600,textTransform:"uppercase",letterSpacing:.6}}>Rendición</span>
+          <select
+            value={selId || ""}
+            onChange={e=>setSelId(e.target.value)}
+            style={{
+              ...S.select,
+              width:"auto",minWidth:260,maxWidth:"100%",cursor:"pointer",
+              fontWeight:600,color:TDC.text,
+              border:`1px solid ${TDC.red}`,background:TDC.redLight2,
             }}>
-              {r.label}
-              {r.moneda === "Dólares ($)" && <span style={{fontSize:10,background:"#E3F2FD",color:"#1565C0",padding:"1px 5px",borderRadius:4,fontWeight:700}}>$</span>}
-            </div>
-          ))}
+            {rendiciones.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.label}{r.moneda === "Dólares ($)" ? "  ·  $" : ""}
+              </option>
+            ))}
+          </select>
+          <span style={{fontSize:12,color:TDC.textLight}}>
+            {rendiciones.length} rendici{rendiciones.length!==1?"ones":"ón"}
+          </span>
         </div>
       )}
 
