@@ -13,6 +13,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Faltan parámetros" });
     }
 
+    const metaNote = tipo === "META"
+      ? `
+
+IMPORTANTE — Facturas de Meta Ads:
+- El campo "comprobante" DEBE ser el valor que aparece bajo "Identificador de la transacción" (un número largo con guion, por ejemplo 26107964142227786-26144709841886550). NUNCA uses el "Número de referencia" (código corto tipo EGLGHFMJX2) ni el "Identificador de la cuenta".
+- "proveedor" suele ser "Meta Platforms Ireland Limited".
+- "monto" es el importe cobrado (p. ej. "Fondos agregados").`
+      : "";
+
     const systemPrompt = `Eres un asistente experto en comprobantes de pago peruanos.
 Extrae los datos y devuelve SOLO un JSON válido sin texto adicional ni markdown.
 Claves requeridas:
@@ -25,7 +34,7 @@ Claves requeridas:
   "referencia": "descripción máx 80 chars",
   "monto": número,
   "tipoGasto": "Lovemark"|"Entrega"|"Alquiler"|"Publicidad Exterior"|"Publicidad de Obra"|"Permisos Municipales"|"Material Gráfico"|"Software"|"Otros"
-}`;
+}${metaNote}`;
 
     const contentPart = mediaType.startsWith("image/")
       ? { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } }
