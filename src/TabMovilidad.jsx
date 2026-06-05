@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { saveMovilidad, deleteMovilidad } from "./firebase.js";
+import { useState, useRef } from "react";
+import { saveMovilidad, deleteMovilidad, uploadReciboMov, deleteReciboMov } from "./firebase.js";
 import { exportMovilidadXLSX } from "./exporter.js";
 import {
   TDC, S, fmt, uid, today, mesLabel, movLabel,
@@ -54,6 +54,8 @@ export default function TabMovilidad({ planillas }) {
   };
   const deleteItem = async itemId => {
     if (!sel) return;
+    const it = sel.items.find(i => i.id === itemId);
+    if (it?.reciboPath) deleteReciboMov(it.reciboPath); // limpia el archivo del recibo
     await saveMovilidad({ ...sel, items: sel.items.filter(i => i.id !== itemId) });
     toast("Viaje eliminado", { tone:"error" });
   };
@@ -188,14 +190,14 @@ export default function TabMovilidad({ planillas }) {
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead>
                 <tr style={{borderBottom:`2px solid ${TDC.border}`}}>
-                  {["Fecha","Motivo","Destino","Proyecto","Monto viaje","Subtotal día",""].map(h=>(
+                  {["Fecha","Motivo","Destino","Proyecto","Monto viaje","Subtotal día","Recibo",""].map(h=>(
                     <th key={h} style={{padding:"8px 10px",textAlign:"left",color:TDC.faint,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:.6,whiteSpace:"nowrap"}}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {items.length===0 && (
-                  <tr><td colSpan={7}>
+                  <tr><td colSpan={8}>
                     <EmptyState compact icon="🛣️" title="Sin viajes" subtitle="Haz clic en “+ Agregar viaje” para comenzar."/>
                   </td></tr>
                 )}
@@ -209,6 +211,11 @@ export default function TabMovilidad({ planillas }) {
                       <td style={{padding:"8px 10px"}}>{item.proyecto ? <ProjBadge p={item.proyecto}/> : "—"}</td>
                       <td style={{padding:"8px 10px",fontWeight:700,color:TDC.red600,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap"}}>{fmt(item.monto)}</td>
                       <td style={{padding:"8px 10px",fontFamily:"'Sora',sans-serif",fontWeight:700,color:idx===0?TDC.ink:"transparent",whiteSpace:"nowrap"}}>{idx===0?fmt(sub):""}</td>
+                      <td style={{padding:"8px 10px",whiteSpace:"nowrap"}}>
+                        {item.reciboUrl
+                          ? <a href={item.reciboUrl} target="_blank" rel="noopener noreferrer" title={item.reciboNombre||"Ver recibo"} style={{color:TDC.red600,fontWeight:600,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>📎 Ver</a>
+                          : <span style={{color:TDC.faint,fontSize:11}}>—</span>}
+                      </td>
                       <td style={{padding:"8px 10px"}}>
                         <div style={{display:"flex",gap:4}}>
                           <button onClick={()=>setEditingItem({...item})} style={{background:TDC.bg,border:`1px solid ${TDC.border}`,borderRadius:8,color:TDC.muted,cursor:"pointer",padding:"4px 8px",fontSize:11,fontFamily:"'General Sans',sans-serif"}}>✏</button>
@@ -224,7 +231,7 @@ export default function TabMovilidad({ planillas }) {
                   <tr style={{borderTop:`2px solid ${TDC.border}`,background:TDC.bg}}>
                     <td colSpan={4} style={{padding:"9px 10px",color:TDC.muted,fontSize:11,fontWeight:600}}>TOTAL DE LA PLANILLA</td>
                     <td colSpan={2} style={{padding:"9px 10px",fontWeight:800,color:TDC.ink,fontFamily:"'Sora',sans-serif"}}>{fmt(total)}</td>
-                    <td/>
+                    <td colSpan={2}/>
                   </tr>
                 </tfoot>
               )}
@@ -282,8 +289,33 @@ function ProjBadge({ p }) {
 // ── Modal de viaje ──
 function MovItemModal({ item, onSave, onCancel }) {
   const [f, setF] = useState({ ...item });
+  const [uploading, setUploading]   = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileRef = useRef();
   const set = (k,v) => setF(p=>({ ...p, [k]: v }));
   const valid = f.fecha && f.motivo && f.monto;
+
+  const handleUpload = async e => {
+    const file = e.target.files[0];
+    if (fileRef.current) fileRef.current.value = "";
+    if (!file) return;
+    setUploading(true); setUploadError("");
+    try {
+      if (f.reciboPath) await deleteReciboMov(f.reciboPath); // reemplaza el anterior
+      const res = await uploadReciboMov(file, f.id);
+      setF(p => ({ ...p, reciboUrl: res.url, reciboNombre: res.nombre, reciboPath: res.path }));
+    } catch (err) {
+      setUploadError(err?.message || "No se pudo subir el recibo. ¿Está habilitado Firebase Storage?");
+    } finally {
+      setUploading(false);
+    }
+  };
+  const removeRecibo = async () => {
+    if (f.reciboPath) await deleteReciboMov(f.reciboPath);
+    setF(p => ({ ...p, reciboUrl:"", reciboNombre:"", reciboPath:"" }));
+  };
+
+  const upBtn = { background:TDC.bg, border:`1px solid ${TDC.border}`, borderRadius:8, color:TDC.textSub, cursor:"pointer", padding:"6px 10px", fontSize:11, fontWeight:600 };
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(4px)"}}>
@@ -320,6 +352,26 @@ function MovItemModal({ item, onSave, onCancel }) {
               <div style={S.label}>Monto del viaje *</div>
               <input type="number" step="0.01" style={{...S.input,...S.num,color:TDC.red600,fontWeight:700}} value={f.monto} onChange={e=>set("monto",e.target.value)} placeholder="0.00"/>
               <div style={{fontSize:10,color:TDC.faint,marginTop:3}}>Soles (S/)</div>
+            </div>
+
+            {/* Recibo (RPH) — archivo en Firebase Storage */}
+            <div style={{gridColumn:"span 2"}}>
+              <div style={S.label}>Recibo (RPH)</div>
+              {f.reciboUrl ? (
+                <div style={{display:"flex",alignItems:"center",gap:10,background:TDC.bg,border:`1px solid ${TDC.border}`,borderRadius:8,padding:"9px 12px"}}>
+                  <a href={f.reciboUrl} target="_blank" rel="noopener noreferrer" style={{color:TDC.red600,fontWeight:600,fontSize:12,textDecoration:"none",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📎 {f.reciboNombre||"Ver recibo"}</a>
+                  <button type="button" onClick={()=>!uploading&&fileRef.current?.click()} style={upBtn}>{uploading?"Subiendo…":"Reemplazar"}</button>
+                  <button type="button" onClick={removeRecibo} style={{...upBtn,background:TDC.redLight2,border:`1px solid ${TDC.coral}`,color:TDC.red600}}>Quitar</button>
+                </div>
+              ) : (
+                <button type="button" onClick={()=>!uploading&&fileRef.current?.click()} disabled={uploading}
+                  style={{width:"100%",border:`1.5px dashed ${uploading?TDC.red:TDC.border}`,borderRadius:10,background:TDC.bg,color:uploading?TDC.red600:TDC.textSub,cursor:uploading?"default":"pointer",padding:"11px 14px",fontSize:12,fontWeight:600,fontFamily:"'General Sans',sans-serif"}}>
+                  {uploading ? "Subiendo…" : "📎 Subir recibo (PDF o foto)"}
+                </button>
+              )}
+              <input ref={fileRef} type="file" accept=".pdf,application/pdf,image/*" style={{display:"none"}} onChange={handleUpload}/>
+              {uploadError && <div style={{color:TDC.red600,fontSize:11,marginTop:4}}>⚠ {uploadError}</div>}
+              <div style={{fontSize:10,color:TDC.faint,marginTop:4}}>Se guarda para abrirlo al cierre de mes. Opcional.</div>
             </div>
           </div>
 

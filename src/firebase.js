@@ -8,6 +8,13 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCm4H4QNm3lxq1S1C8cS3zkN2bfkmBIVHM",
@@ -21,6 +28,26 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
+// Que un fallo (p. ej. Storage sin habilitar) se reporte en ~20s en vez de 2 min
+storage.maxUploadRetryTime = 20000;
+storage.maxOperationRetryTime = 20000;
+
+// ── Recibos de Movilidad (archivos en Firebase Storage) ───────────────────────
+// Sube el recibo (PDF/imagen) de un viaje y devuelve su URL para abrirlo luego.
+export async function uploadReciboMov(file, itemId) {
+  const safe = (file.name || "recibo").replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `recibosMovilidad/${itemId}/${safe}`;
+  const r = storageRef(storage, path);
+  await uploadBytes(r, file, { contentType: file.type || "application/octet-stream" });
+  const url = await getDownloadURL(r);
+  return { url, nombre: file.name || safe, path };
+}
+
+export async function deleteReciboMov(path) {
+  if (!path) return;
+  try { await deleteObject(storageRef(storage, path)); } catch { /* archivo ya no existe */ }
+}
 
 // ── Collection refs ───────────────────────────────────────────────────────────
 export const colCC        = () => collection(db, "rendicionesCC");

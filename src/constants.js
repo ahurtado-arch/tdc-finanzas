@@ -198,6 +198,9 @@ export const emptyItemMov = () => ({
   destino: "",
   proyecto: "",
   monto: "",
+  reciboUrl: "",      // URL del recibo subido (Firebase Storage)
+  reciboNombre: "",   // nombre original del archivo
+  reciboPath: "",     // ruta en Storage (para poder borrarlo)
 });
 
 // Etiqueta legible de una planilla para el selector
