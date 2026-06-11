@@ -374,3 +374,48 @@ export async function exportMovilidadXLSX(planilla) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ── Descargar todos los recibos de una planilla en un ZIP ─────────────────────
+export async function downloadRecibosMovZip(planilla) {
+  const conRecibo = (planilla.items || []).filter(i => i.reciboUrl);
+  if (!conRecibo.length) return { count: 0 };
+
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
+  const usados = {};
+  let ok = 0;
+  const errores = [];
+
+  // Ordena por fecha para que el ZIP salga prolijo
+  const items = [...conRecibo].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+
+  for (const it of items) {
+    try {
+      const resp = await fetch(it.reciboUrl);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const ext = ((it.reciboNombre || "").split(".").pop() || "pdf").toLowerCase().replace(/[^a-z0-9]/g, "") || "pdf";
+      let base = `${it.fecha || "sf"}_${(it.motivo || "recibo").slice(0, 40)}`.replace(/[^a-zA-Z0-9._-]+/g, "_");
+      usados[base] = (usados[base] || 0) + 1;
+      if (usados[base] > 1) base = `${base}_${usados[base]}`;
+      zip.file(`${base}.${ext}`, blob);
+      ok++;
+    } catch (e) {
+      errores.push(it.reciboNombre || it.fecha || "recibo");
+    }
+  }
+
+  if (ok === 0) throw new Error("No se pudo descargar ningún recibo");
+
+  const out = await zip.generateAsync({ type: "blob" });
+  const url = URL.createObjectURL(out);
+  const a = document.createElement("a");
+  a.href = url;
+  const safeT = (planilla.trabajador || "planilla").replace(/[^a-zA-Z0-9]/g, "_");
+  const safeP = (planilla.periodo || "").replace(/[^a-zA-Z0-9]/g, "_");
+  a.download = `Recibos_Movilidad_${safeT}_${safeP}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  return { count: ok, errores };
+}

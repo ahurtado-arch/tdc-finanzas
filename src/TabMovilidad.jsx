@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { saveMovilidad, deleteMovilidad, uploadReciboMov, deleteReciboMov } from "./firebase.js";
-import { exportMovilidadXLSX } from "./exporter.js";
+import { exportMovilidadXLSX, downloadRecibosMovZip } from "./exporter.js";
 import {
   TDC, S, fmt, uid, today, mesLabel, movLabel,
   EMPLEADORES_MOV, PROYECTOS_MOV, emptyPlanillaMov, emptyItemMov,
@@ -13,10 +13,27 @@ export default function TabMovilidad({ planillas }) {
   const [nuevo, setNuevo]         = useState(emptyPlanillaMov());
   const [editingItem, setEditingItem] = useState(null);
   const [saving, setSaving]       = useState(false);
+  const [descargando, setDescargando] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const toast = useToast();
 
   const sel = planillas.find(p => p.id === selId) || null;
+  const nRecibos = sel ? sel.items.filter(i => i.reciboUrl).length : 0;
+
+  const descargarRecibos = async () => {
+    if (!sel) return;
+    setDescargando(true);
+    try {
+      const { count, errores = [] } = await downloadRecibosMovZip(sel);
+      if (!count) toast("No hay recibos para descargar", { tone: "error" });
+      else if (errores.length) toast(`${count} recibo(s) descargado(s); ${errores.length} fallaron`);
+      else toast(`${count} recibo(s) descargado(s)`);
+    } catch (e) {
+      toast("No se pudieron descargar los recibos", { tone: "error" });
+    } finally {
+      setDescargando(false);
+    }
+  };
 
   // ── Planilla CRUD ──
   const createPlanilla = async () => {
@@ -84,6 +101,7 @@ export default function TabMovilidad({ planillas }) {
         </div>
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
           <Button variant="outline" leftIcon="+" onClick={()=>setShowNew(v=>!v)}>Nueva planilla</Button>
+          {sel && nRecibos>0 && <Button variant="outline" leftIcon="📦" disabled={descargando} onClick={descargarRecibos}>{descargando?"Descargando…":`Descargar recibos (${nRecibos})`}</Button>}
           {sel && <Button variant="primary" leftIcon="⬇" onClick={()=>exportMovilidadXLSX(sel)}>Descargar Excel</Button>}
         </div>
       </div>
